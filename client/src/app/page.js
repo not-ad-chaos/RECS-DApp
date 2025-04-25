@@ -11,9 +11,9 @@ import EnergyMarketplaceABI from './EnergyMarketplace.json';
 import RenewableEnergyCertificationABI from './RenewableEnergyCertification.json';
 
 // Contract addresses - replace with your deployed contract addresses
-const ENERGY_TOKEN_ADDRESS = '0xa417bb88629Bb0Ab57Bbb245b4414071902953AF';
-const ENERGY_MARKETPLACE_ADDRESS = '0x51fFECC16e2755a3568cCc7928C1CFC6fbEd710c';
-const RENEWABLE_CERTIFICATION_ADDRESS = '0xDab2041bCD1434459506Bba651938aaf7322c5F0';
+const ENERGY_TOKEN_ADDRESS = '0x73cDC2A21EAaD72a5d608D7C02B268aAd9a40A89';
+const ENERGY_MARKETPLACE_ADDRESS = '0x8e59e9a935c4c4fEa7D67191136208beBd9B8227';
+const RENEWABLE_CERTIFICATION_ADDRESS = '0xB2ff913a1Be316EC1a6163CAf111a8EF0fcD5ba9';
 
 export default function Home() {
     // State variables
@@ -27,6 +27,9 @@ export default function Home() {
     const [certificates, setCertificates] = useState([]);
     const [isProducer, setIsProducer] = useState(false);
     const [producerInfo, setProducerInfo] = useState(null);
+    const [isAuditor, setIsAuditor] = useState(false);
+    const [producersToVerify, setProducersToVerify] = useState([]);
+    const [accounts, setAccounts] = useState([]);
 
     // Form state
     const [newListing, setNewListing] = useState({
@@ -52,17 +55,17 @@ export default function Home() {
     const energySources = ['Solar', 'Wind', 'Hydro', 'Biomass', 'Geothermal'];
 
     // Connect wallet
-    // Connect wallet
-    // Connect wallet
     const connectWallet = async () => {
         try {
             const web3Modal = new Web3Modal();
             const connection = await web3Modal.connect();
             const ethProvider = new ethers.BrowserProvider(connection);
-            const accounts = await ethProvider.listAccounts();
+            const allAccounts = await ethProvider.listAccounts();
             const signer = await ethProvider.getSigner();
 
-            setAccount(accounts[0].address);
+            // Store all accounts
+            setAccounts(allAccounts.map(acc => acc.address));
+            setAccount(allAccounts[0].address);
             setConnected(true);
 
             // Initialize contracts with signer
@@ -89,9 +92,50 @@ export default function Home() {
             setCertificationContract(certificationContract);
 
             // Now load user data after contracts are initialized
-            await loadUserData(accounts[0].address, tokenContract, marketplaceContract, certificationContract);
+            await loadUserData(allAccounts[0].address, tokenContract, marketplaceContract, certificationContract);
         } catch (error) {
             console.error('Error connecting wallet:', error);
+        }
+    };
+
+    // Add new function to handle account switching
+    const switchAccount = async (newAddress) => {
+        try {
+            setAccount(newAddress);
+            
+            // Get new signer for the selected account
+            const web3Modal = new Web3Modal();
+            const connection = await web3Modal.connect();
+            const ethProvider = new ethers.BrowserProvider(connection);
+            const signer = await ethProvider.getSigner(newAddress);
+
+            // Reinitialize contracts with new signer
+            const tokenContract = new ethers.Contract(
+                ENERGY_TOKEN_ADDRESS,
+                EnergyTokenABI.abi,
+                signer
+            );
+
+            const marketplaceContract = new ethers.Contract(
+                ENERGY_MARKETPLACE_ADDRESS,
+                EnergyMarketplaceABI.abi,
+                signer
+            );
+
+            const certificationContract = new ethers.Contract(
+                RENEWABLE_CERTIFICATION_ADDRESS,
+                RenewableEnergyCertificationABI.abi,
+                signer
+            );
+
+            setTokenContract(tokenContract);
+            setMarketplaceContract(marketplaceContract);
+            setCertificationContract(certificationContract);
+
+            // Reload user data for new account
+            await loadUserData(newAddress, tokenContract, marketplaceContract, certificationContract);
+        } catch (error) {
+            console.error('Error switching account:', error);
         }
     };
 
@@ -117,31 +161,41 @@ export default function Home() {
                 });
             }
 
+            // Check if user is an auditor
+            const isAuditor = await certificationContract.authorizedAuditors(account);
+            setIsAuditor(isAuditor);
+
+            // If user is an auditor, load unverified producers
+            if (isAuditor) {
+                await loadUnverifiedProducers(certificationContract);
+            }
+
             // Load active listings
             await loadActiveListings(marketplaceContract);
 
-            // Load certificates
+            // Load certificates with certification contract
             await loadCertificates(account, certificationContract);
         } catch (error) {
             console.error('Error loading user data:', error);
         }
     };
 
-    // Load certificates - Updated to use the correct contract and parameter
+    // Load certificates - Updated to handle BigInt values
     const loadCertificates = async (account, certificationContract) => {
         try {
-            const certificateCount = await certificationContract.certificateCount();
+            // Get certificate count from certification contract
+            const certificateCount = await certificationContract.certificateCount;
+            console.log(certificateCount)
             const certs = [];
 
-            for (let i = 1; i <= certificateCount.toNumber(); i++) {
+            for (let i = 1; i <= Number(certificateCount); i++) {
                 const cert = await certificationContract.certificates(i);
-                if (cert.producer === account) {
+                if (cert.producer.toLowerCase() === account.toLowerCase()) {
                     certs.push({
                         id: cert.id.toString(),
                         energySource: cert.energySource,
                         kWhProduced: cert.kWhProduced.toString(),
-                        tokenAmount: cert.tokenAmount.toString(),
-                        timestamp: new Date(cert.timestamp.toNumber() * 1000).toLocaleString(),
+                        timestamp: new Date(Number(cert.timestamp) * 1000).toLocaleString(),
                         location: cert.location,
                         verified: cert.verified
                     });
@@ -250,14 +304,14 @@ export default function Home() {
 
             await tx.wait();
 
-            // Reset form and reload certificates
+            // Reset form and reload certificates with certification contract
             setNewCertificate({
                 energySource: 'Solar',
                 kWhProduced: '',
                 location: ''
             });
 
-            loadCertificates(marketplaceContract);
+            loadCertificates(account, certificationContract);
         } catch (error) {
             console.error('Error creating certificate:', error);
         }
@@ -299,6 +353,62 @@ export default function Home() {
         }
     };
 
+    // Add function to load unverified producers
+    const loadUnverifiedProducers = async (certContract) => {
+        try {
+            // We'll need to listen to ProducerRegistered events to get all producers
+            const filter = certContract.filters.ProducerRegistered();
+            const events = await certContract.queryFilter(filter);
+            
+            const unverifiedProducers = [];
+            
+            for (const event of events) {
+                const producerAddress = event.args.producerAddress;
+                const producer = await certContract.producers(producerAddress);
+                
+                if (!producer.verified) {
+                    unverifiedProducers.push({
+                        address: producerAddress,
+                        name: producer.name,
+                        location: producer.location,
+                        energyTypes: Array.isArray(producer.energyTypes) ? producer.energyTypes : [],
+                        totalCapacityKW: producer.totalCapacityKW.toString(),
+                        registrationTime: new Date(Number(producer.registrationTime) * 1000).toLocaleString()
+                    });
+                }
+            }
+            
+            setProducersToVerify(unverifiedProducers);
+        } catch (error) {
+            console.error('Error loading unverified producers:', error);
+        }
+    };
+
+    // Add function to verify a producer
+    const verifyProducer = async (producerAddress) => {
+        try {
+            // Create audit report and verify producer
+            const tx = await certificationContract.fileAuditReport(
+                producerAddress,
+                "ipfs://placeholder-uri", // You might want to add actual audit report URI
+                "Producer verified through UI",
+                true // passed verification
+            );
+            
+            await tx.wait();
+            
+            // Reload unverified producers
+            await loadUnverifiedProducers(certificationContract);
+            
+            // If this was the current user being verified, reload their data
+            if (producerAddress.toLowerCase() === account.toLowerCase()) {
+                await loadUserData(account, tokenContract, marketplaceContract, certificationContract);
+            }
+        } catch (error) {
+            console.error('Error verifying producer:', error);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gray-100">
             <Head>
@@ -317,10 +427,25 @@ export default function Home() {
                             Connect Wallet
                         </button>
                     ) : (
-                        <div className="flex items-center">
-                            <span className="mr-4">
-                                {account.substring(0, 6)}...{account.substring(account.length - 4)}
-                            </span>
+                        <div className="flex items-center space-x-4">
+                            <div className="relative">
+                                <select
+                                    value={account}
+                                    onChange={(e) => switchAccount(e.target.value)}
+                                    className="bg-white text-green-600 px-4 py-2 rounded-md font-medium appearance-none cursor-pointer pr-8"
+                                >
+                                    {accounts.map((addr) => (
+                                        <option key={addr} value={addr}>
+                                            {addr.substring(0, 6)}...{addr.substring(addr.length - 4)}
+                                        </option>
+                                    ))}
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-green-600">
+                                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                        <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                                    </svg>
+                                </div>
+                            </div>
                             <span className="bg-green-700 px-3 py-1 rounded-full text-sm">
                                 {balance} REC
                             </span>
@@ -495,9 +620,20 @@ export default function Home() {
                             {isProducer ? (
                                 <section className="bg-white rounded-lg shadow-md p-6 mb-8">
                                     <h2 className="text-xl font-bold mb-4">Producer Profile</h2>
-                                    <div className="mb-4">
-                                        <p className="font-medium">Name</p>
-                                        <p className="text-gray-600">{producerInfo?.name}</p>
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div>
+                                            <p className="font-medium">Name</p>
+                                            <p className="text-gray-600">{producerInfo?.name}</p>
+                                        </div>
+                                        {producerInfo?.verified ? (
+                                            <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+                                                Verified Producer
+                                            </span>
+                                        ) : (
+                                            <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm">
+                                                Pending Verification
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="mb-4">
                                         <p className="font-medium">Location</p>
@@ -506,8 +642,11 @@ export default function Home() {
                                     <div className="mb-4">
                                         <p className="font-medium">Energy Types</p>
                                         <div className="flex flex-wrap gap-2 mt-1">
-                                            {(producerInfo?.energyTypes || []).map(type => (
-                                                <span key={type} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
+                                            {producerInfo?.energyTypes && producerInfo.energyTypes.map((type) => (
+                                                <span
+                                                    key={type}
+                                                    className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm"
+                                                >
                                                     {type}
                                                 </span>
                                             ))}
@@ -516,18 +655,6 @@ export default function Home() {
                                     <div className="mb-4">
                                         <p className="font-medium">Capacity</p>
                                         <p className="text-gray-600">{producerInfo?.totalCapacityKW} kW</p>
-                                    </div>
-                                    <div className="mb-4">
-                                        <p className="font-medium">Status</p>
-                                        {producerInfo?.verified ? (
-                                            <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">
-                                                Verified Producer
-                                            </span>
-                                        ) : (
-                                            <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm">
-                                                Pending Verification
-                                            </span>
-                                        )}
                                     </div>
                                 </section>
                             ) : (
@@ -599,6 +726,65 @@ export default function Home() {
                                             Register
                                         </button>
                                     </form>
+                                </section>
+                            )}
+
+                            {isAuditor && (
+                                <section className="bg-white rounded-lg shadow-md p-6 mb-8">
+                                    <h2 className="text-xl font-bold mb-4">Auditor Panel</h2>
+                                    {producersToVerify.length === 0 ? (
+                                        <p className="text-gray-500">No producers waiting for verification</p>
+                                    ) : (
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full">
+                                                <thead>
+                                                    <tr className="border-b">
+                                                        <th className="text-left py-2">Address</th>
+                                                        <th className="text-left py-2">Name</th>
+                                                        <th className="text-left py-2">Location</th>
+                                                        <th className="text-left py-2">Energy Types</th>
+                                                        <th className="text-left py-2">Capacity (kW)</th>
+                                                        <th className="text-left py-2">Registration Date</th>
+                                                        <th className="text-left py-2">Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {producersToVerify.map((producer) => (
+                                                        <tr key={producer.address} className="border-b hover:bg-gray-50">
+                                                            <td className="py-3">
+                                                                {producer.address.substring(0, 6)}...
+                                                                {producer.address.substring(producer.address.length - 4)}
+                                                            </td>
+                                                            <td className="py-3">{producer.name}</td>
+                                                            <td className="py-3">{producer.location}</td>
+                                                            <td className="py-3">
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {producer.energyTypes.map((type) => (
+                                                                        <span
+                                                                            key={type}
+                                                                            className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm"
+                                                                        >
+                                                                            {type}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            </td>
+                                                            <td className="py-3">{producer.totalCapacityKW}</td>
+                                                            <td className="py-3">{producer.registrationTime}</td>
+                                                            <td className="py-3">
+                                                                <button
+                                                                    onClick={() => verifyProducer(producer.address)}
+                                                                    className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+                                                                >
+                                                                    Verify
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
                                 </section>
                             )}
 

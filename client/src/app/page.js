@@ -1,195 +1,188 @@
-"use client";
+"use client"
 
-import { useState } from 'react';
-import { ethers } from 'ethers';
-import Web3Modal from 'web3modal';
-import Head from 'next/head';
+import { useState } from "react"
+import { ethers } from "ethers"
+import Web3Modal from "web3modal"
+import Head from "next/head"
 
 // Import ABI files - you would need to create these from the contracts
-import EnergyTokenABI from './EnergyToken.json';
-import EnergyMarketplaceABI from './EnergyMarketplace.json';
-import RenewableEnergyCertificationABI from './RenewableEnergyCertification.json';
+import EnergyTokenABI from "./EnergyToken.json"
+import EnergyMarketplaceABI from "./EnergyMarketplace.json"
+import RenewableEnergyCertificationABI from "./RenewableEnergyCertification.json"
 
-// Contract addresses - replace with your deployed contract addresses
-const ENERGY_TOKEN_ADDRESS = '0x73cDC2A21EAaD72a5d608D7C02B268aAd9a40A89';
-const ENERGY_MARKETPLACE_ADDRESS = '0x8e59e9a935c4c4fEa7D67191136208beBd9B8227';
-const RENEWABLE_CERTIFICATION_ADDRESS = '0xB2ff913a1Be316EC1a6163CAf111a8EF0fcD5ba9';
+// Contract addresses from deployment
+import contracts from "./contracts.json"
+const ENERGY_TOKEN_ADDRESS = contracts.EnergyToken
+const ENERGY_MARKETPLACE_ADDRESS = contracts.EnergyMarketplace
+const RENEWABLE_CERTIFICATION_ADDRESS = contracts.RenewableEnergyCertification
 
 export default function Home() {
     // State variables
-    const [account, setAccount] = useState('');
-    const [tokenContract, setTokenContract] = useState(null);
-    const [marketplaceContract, setMarketplaceContract] = useState(null);
-    const [certificationContract, setCertificationContract] = useState(null);
-    const [connected, setConnected] = useState(false);
-    const [balance, setBalance] = useState('0');
-    const [activeListings, setActiveListings] = useState([]);
-    const [certificates, setCertificates] = useState([]);
-    const [isProducer, setIsProducer] = useState(false);
-    const [producerInfo, setProducerInfo] = useState(null);
-    const [isAuditor, setIsAuditor] = useState(false);
-    const [producersToVerify, setProducersToVerify] = useState([]);
-    const [accounts, setAccounts] = useState([]);
+    const [account, setAccount] = useState("")
+    const [tokenContract, setTokenContract] = useState(null)
+    const [marketplaceContract, setMarketplaceContract] = useState(null)
+    const [certificationContract, setCertificationContract] = useState(null)
+    const [connected, setConnected] = useState(false)
+    const [balance, setBalance] = useState("0")
+    const [activeListings, setActiveListings] = useState([])
+    const [certificates, setCertificates] = useState([])
+    const [isProducer, setIsProducer] = useState(false)
+    const [producerInfo, setProducerInfo] = useState(null)
+    const [isAuditor, setIsAuditor] = useState(false)
+    const [producersToVerify, setProducersToVerify] = useState([])
+    const [accounts, setAccounts] = useState([])
 
     // Form state
     const [newListing, setNewListing] = useState({
-        tokenAmount: '',
-        pricePerToken: '',
-        energySource: 'Solar',
-        kWhRepresented: ''
-    });
+        tokenAmount: "",
+        pricePerToken: "",
+        energySource: "Solar",
+        kWhRepresented: "",
+    })
 
     const [newCertificate, setNewCertificate] = useState({
-        energySource: 'Solar',
-        kWhProduced: '',
-        location: ''
-    });
+        energySource: "Solar",
+        kWhProduced: "",
+        location: "",
+    })
 
     const [producerRegistration, setProducerRegistration] = useState({
-        name: '',
-        location: '',
-        energyTypes: ['Solar'],
-        capacityKW: ''
-    });
+        name: "",
+        location: "",
+        energyTypes: ["Solar"],
+        capacityKW: "",
+    })
 
-    const energySources = ['Solar', 'Wind', 'Hydro', 'Biomass', 'Geothermal'];
+    const energySources = ["Solar", "Wind", "Hydro", "Biomass", "Geothermal"]
 
     // Connect wallet
     const connectWallet = async () => {
         try {
-            const web3Modal = new Web3Modal();
-            const connection = await web3Modal.connect();
-            const ethProvider = new ethers.BrowserProvider(connection);
-            const allAccounts = await ethProvider.listAccounts();
-            const signer = await ethProvider.getSigner();
+            const web3Modal = new Web3Modal()
+            const connection = await web3Modal.connect()
+            const ethProvider = new ethers.BrowserProvider(connection)
+            const allAccounts = await ethProvider.listAccounts()
+            const signer = await ethProvider.getSigner()
 
             // Store all accounts
-            setAccounts(allAccounts.map(acc => acc.address));
-            setAccount(allAccounts[0].address);
-            setConnected(true);
+            setAccounts(allAccounts.map((acc) => acc.address))
+            setAccount(allAccounts[0].address)
+            setConnected(true)
 
             // Initialize contracts with signer
-            const tokenContract = new ethers.Contract(
-                ENERGY_TOKEN_ADDRESS,
-                EnergyTokenABI.abi,
-                signer
-            );
+            const tokenContract = new ethers.Contract(ENERGY_TOKEN_ADDRESS, EnergyTokenABI.abi, signer)
 
             const marketplaceContract = new ethers.Contract(
                 ENERGY_MARKETPLACE_ADDRESS,
                 EnergyMarketplaceABI.abi,
                 signer
-            );
+            )
 
             const certificationContract = new ethers.Contract(
                 RENEWABLE_CERTIFICATION_ADDRESS,
                 RenewableEnergyCertificationABI.abi,
                 signer
-            );
+            )
 
-            setTokenContract(tokenContract);
-            setMarketplaceContract(marketplaceContract);
-            setCertificationContract(certificationContract);
+            setTokenContract(tokenContract)
+            setMarketplaceContract(marketplaceContract)
+            setCertificationContract(certificationContract)
 
             // Now load user data after contracts are initialized
-            await loadUserData(allAccounts[0].address, tokenContract, marketplaceContract, certificationContract);
+            await loadUserData(allAccounts[0].address, tokenContract, marketplaceContract, certificationContract)
         } catch (error) {
-            console.error('Error connecting wallet:', error);
+            console.error("Error connecting wallet:", error)
         }
-    };
+    }
 
     // Add new function to handle account switching
     const switchAccount = async (newAddress) => {
         try {
-            setAccount(newAddress);
-            
+            setAccount(newAddress)
+
             // Get new signer for the selected account
-            const web3Modal = new Web3Modal();
-            const connection = await web3Modal.connect();
-            const ethProvider = new ethers.BrowserProvider(connection);
-            const signer = await ethProvider.getSigner(newAddress);
+            const web3Modal = new Web3Modal()
+            const connection = await web3Modal.connect()
+            const ethProvider = new ethers.BrowserProvider(connection)
+            const signer = await ethProvider.getSigner(newAddress)
 
             // Reinitialize contracts with new signer
-            const tokenContract = new ethers.Contract(
-                ENERGY_TOKEN_ADDRESS,
-                EnergyTokenABI.abi,
-                signer
-            );
+            const tokenContract = new ethers.Contract(ENERGY_TOKEN_ADDRESS, EnergyTokenABI.abi, signer)
 
             const marketplaceContract = new ethers.Contract(
                 ENERGY_MARKETPLACE_ADDRESS,
                 EnergyMarketplaceABI.abi,
                 signer
-            );
+            )
 
             const certificationContract = new ethers.Contract(
                 RENEWABLE_CERTIFICATION_ADDRESS,
                 RenewableEnergyCertificationABI.abi,
                 signer
-            );
+            )
 
-            setTokenContract(tokenContract);
-            setMarketplaceContract(marketplaceContract);
-            setCertificationContract(certificationContract);
+            setTokenContract(tokenContract)
+            setMarketplaceContract(marketplaceContract)
+            setCertificationContract(certificationContract)
 
             // Reload user data for new account
-            await loadUserData(newAddress, tokenContract, marketplaceContract, certificationContract);
+            await loadUserData(newAddress, tokenContract, marketplaceContract, certificationContract)
         } catch (error) {
-            console.error('Error switching account:', error);
+            console.error("Error switching account:", error)
         }
-    };
+    }
 
     // Load user data
     const loadUserData = async (account, tokenContract, marketplaceContract, certificationContract) => {
         try {
             // Get token balance
-            const balance = await tokenContract.balanceOf(account);
-            setBalance(ethers.formatEther(balance));
+            const balance = await tokenContract.balanceOf(account)
+            setBalance(ethers.formatEther(balance))
 
             // Check if user is registered producer
-            const isRegistered = await certificationContract.registeredProducers(account);
-            setIsProducer(isRegistered);
+            const isRegistered = await certificationContract.registeredProducers(account)
+            setIsProducer(isRegistered)
 
             if (isRegistered) {
-                const producer = await certificationContract.producers(account);
+                const producer = await certificationContract.producers(account)
                 setProducerInfo({
                     name: producer.name,
                     location: producer.location,
                     energyTypes: Array.isArray(producer.energyTypes) ? producer.energyTypes : [],
                     totalCapacityKW: producer.totalCapacityKW.toString(),
-                    verified: producer.verified
-                });
+                    verified: producer.verified,
+                })
             }
 
             // Check if user is an auditor
-            const isAuditor = await certificationContract.authorizedAuditors(account);
-            setIsAuditor(isAuditor);
+            const isAuditor = await certificationContract.authorizedAuditors(account)
+            setIsAuditor(isAuditor)
 
             // If user is an auditor, load unverified producers
             if (isAuditor) {
-                await loadUnverifiedProducers(certificationContract);
+                await loadUnverifiedProducers(certificationContract)
             }
 
             // Load active listings
-            await loadActiveListings(marketplaceContract);
+            await loadActiveListings(marketplaceContract)
 
             // Load certificates with certification contract
-            await loadCertificates(account, certificationContract);
+            await loadCertificates(account, certificationContract)
         } catch (error) {
-            console.error('Error loading user data:', error);
+            console.error("Error loading user data:", error)
         }
-    };
+    }
 
     // Load certificates - Updated to handle BigInt values
     const loadCertificates = async (account, certificationContract) => {
         try {
             // Get certificate count from certification contract
-            const certificateCount = await certificationContract.certificateCount;
+            const certificateCount = await certificationContract.certificateCount
             console.log(certificateCount)
-            const certs = [];
+            const certs = []
 
             for (let i = 1; i <= Number(certificateCount); i++) {
-                const cert = await certificationContract.certificates(i);
+                const cert = await certificationContract.certificates(i)
                 if (cert.producer.toLowerCase() === account.toLowerCase()) {
                     certs.push({
                         id: cert.id.toString(),
@@ -197,26 +190,26 @@ export default function Home() {
                         kWhProduced: cert.kWhProduced.toString(),
                         timestamp: new Date(Number(cert.timestamp) * 1000).toLocaleString(),
                         location: cert.location,
-                        verified: cert.verified
-                    });
+                        verified: cert.verified,
+                    })
                 }
             }
 
-            setCertificates(certs);
+            setCertificates(certs)
         } catch (error) {
-            console.error('Error loading certificates:', error);
+            console.error("Error loading certificates:", error)
         }
-    };
+    }
 
     // Load active marketplace listings
     const loadActiveListings = async (marketplaceContract) => {
         try {
-            const listingCount = await marketplaceContract.listingCount();
-            const listings = [];
+            const listingCount = await marketplaceContract.listingCount()
+            const listings = []
 
             console.log(listingCount)
             for (let i = 1; i <= listingCount; i++) {
-                const listing = await marketplaceContract.listings(i);
+                const listing = await marketplaceContract.listings(i)
                 if (listing.active) {
                     listings.push({
                         id: listing.id.toString(),
@@ -225,31 +218,28 @@ export default function Home() {
                         pricePerToken: ethers.formatEther(listing.pricePerToken),
                         energySource: listing.energySource,
                         kWhRepresented: listing.kWhRepresented.toString(),
-                        timestamp: new Date(listing.timestamp.toNumber() * 1000).toLocaleString()
-                    });
+                        timestamp: new Date(listing.timestamp.toNumber() * 1000).toLocaleString(),
+                    })
                 }
             }
 
-            setActiveListings(listings);
+            setActiveListings(listings)
         } catch (error) {
-            console.error('Error loading listings:', error);
+            console.error("Error loading listings:", error)
         }
-    };
+    }
 
     // Create new listing
     const createListing = async (e) => {
-        e.preventDefault();
+        e.preventDefault()
 
         try {
-            const tokenAmount = ethers.parseEther(newListing.tokenAmount);
-            const pricePerToken = ethers.parseEther(newListing.pricePerToken);
+            const tokenAmount = ethers.parseEther(newListing.tokenAmount)
+            const pricePerToken = ethers.parseEther(newListing.pricePerToken)
 
             // First approve marketplace to spend tokens
-            const approveTx = await tokenContract.approve(
-                ENERGY_MARKETPLACE_ADDRESS,
-                tokenAmount
-            );
-            await approveTx.wait();
+            const approveTx = await tokenContract.approve(ENERGY_MARKETPLACE_ADDRESS, tokenAmount)
+            await approveTx.wait()
 
             // Create listing
             const tx = await marketplaceContract.createListing(
@@ -257,69 +247,69 @@ export default function Home() {
                 pricePerToken,
                 newListing.energySource,
                 newListing.kWhRepresented
-            );
+            )
 
-            await tx.wait();
+            await tx.wait()
 
             // Reset form and reload listings
             setNewListing({
-                tokenAmount: '',
-                pricePerToken: '',
-                energySource: 'Solar',
-                kWhRepresented: ''
-            });
+                tokenAmount: "",
+                pricePerToken: "",
+                energySource: "Solar",
+                kWhRepresented: "",
+            })
 
-            loadActiveListings(marketplaceContract);
+            loadActiveListings(marketplaceContract)
         } catch (error) {
-            console.error('Error creating listing:', error);
+            console.error("Error creating listing:", error)
         }
-    };
+    }
 
     // Buy listing
     const buyListing = async (listingId, totalPrice) => {
         try {
             const tx = await marketplaceContract.buyListing(listingId, {
-                value: ethers.parseEther(totalPrice)
-            });
+                value: ethers.parseEther(totalPrice),
+            })
 
-            await tx.wait();
+            await tx.wait()
 
             // Reload data
-            loadUserData(account, tokenContract, marketplaceContract, certificationContract);
+            loadUserData(account, tokenContract, marketplaceContract, certificationContract)
         } catch (error) {
-            console.error('Error buying listing:', error);
+            console.error("Error buying listing:", error)
         }
-    };
+    }
 
     // Create certificate
     const createCertificate = async (e) => {
-        e.preventDefault();
+        e.preventDefault()
 
         try {
             const tx = await certificationContract.submitEnergyCertificate(
                 newCertificate.energySource,
                 newCertificate.kWhProduced,
                 newCertificate.location
-            );
+            )
 
-            await tx.wait();
+            await tx.wait()
 
             // Reset form and reload certificates with certification contract
             setNewCertificate({
-                energySource: 'Solar',
-                kWhProduced: '',
-                location: ''
-            });
+                energySource: "Solar",
+                kWhProduced: "",
+                location: "",
+            })
 
-            loadCertificates(account, certificationContract);
+            loadCertificates(account, certificationContract)
         } catch (error) {
-            console.error('Error creating certificate:', error);
+            console.error("Error creating certificate:", error)
         }
-    };
+    }
 
     // Register as producer
     const registerProducer = async (e) => {
-        e.preventDefault();
+        e.preventDefault()
 
         try {
             const tx = await certificationContract.registerProducer(
@@ -327,45 +317,45 @@ export default function Home() {
                 producerRegistration.location,
                 producerRegistration.energyTypes,
                 producerRegistration.capacityKW
-            );
+            )
 
-            await tx.wait();
+            await tx.wait()
 
             // Reload data
-            loadUserData(account, tokenContract, marketplaceContract, certificationContract);
+            loadUserData(account, tokenContract, marketplaceContract, certificationContract)
         } catch (error) {
-            console.error('Error registering producer:', error);
+            console.error("Error registering producer:", error)
         }
-    };
+    }
 
     // Handle energy type selection
     const handleEnergyTypeChange = (type, checked) => {
         if (checked) {
             setProducerRegistration({
                 ...producerRegistration,
-                energyTypes: [...producerRegistration.energyTypes, type]
-            });
+                energyTypes: [...producerRegistration.energyTypes, type],
+            })
         } else {
             setProducerRegistration({
                 ...producerRegistration,
-                energyTypes: producerRegistration.energyTypes.filter(t => t !== type)
-            });
+                energyTypes: producerRegistration.energyTypes.filter((t) => t !== type),
+            })
         }
-    };
+    }
 
     // Add function to load unverified producers
     const loadUnverifiedProducers = async (certContract) => {
         try {
             // We'll need to listen to ProducerRegistered events to get all producers
-            const filter = certContract.filters.ProducerRegistered();
-            const events = await certContract.queryFilter(filter);
-            
-            const unverifiedProducers = [];
-            
+            const filter = certContract.filters.ProducerRegistered()
+            const events = await certContract.queryFilter(filter)
+
+            const unverifiedProducers = []
+
             for (const event of events) {
-                const producerAddress = event.args.producerAddress;
-                const producer = await certContract.producers(producerAddress);
-                
+                const producerAddress = event.args.producerAddress
+                const producer = await certContract.producers(producerAddress)
+
                 if (!producer.verified) {
                     unverifiedProducers.push({
                         address: producerAddress,
@@ -373,16 +363,16 @@ export default function Home() {
                         location: producer.location,
                         energyTypes: Array.isArray(producer.energyTypes) ? producer.energyTypes : [],
                         totalCapacityKW: producer.totalCapacityKW.toString(),
-                        registrationTime: new Date(Number(producer.registrationTime) * 1000).toLocaleString()
-                    });
+                        registrationTime: new Date(Number(producer.registrationTime) * 1000).toLocaleString(),
+                    })
                 }
             }
-            
-            setProducersToVerify(unverifiedProducers);
+
+            setProducersToVerify(unverifiedProducers)
         } catch (error) {
-            console.error('Error loading unverified producers:', error);
+            console.error("Error loading unverified producers:", error)
         }
-    };
+    }
 
     // Add function to verify a producer
     const verifyProducer = async (producerAddress) => {
@@ -393,21 +383,21 @@ export default function Home() {
                 "ipfs://placeholder-uri", // You might want to add actual audit report URI
                 "Producer verified through UI",
                 true // passed verification
-            );
-            
-            await tx.wait();
-            
+            )
+
+            await tx.wait()
+
             // Reload unverified producers
-            await loadUnverifiedProducers(certificationContract);
-            
+            await loadUnverifiedProducers(certificationContract)
+
             // If this was the current user being verified, reload their data
             if (producerAddress.toLowerCase() === account.toLowerCase()) {
-                await loadUserData(account, tokenContract, marketplaceContract, certificationContract);
+                await loadUserData(account, tokenContract, marketplaceContract, certificationContract)
             }
         } catch (error) {
-            console.error('Error verifying producer:', error);
+            console.error("Error verifying producer:", error)
         }
-    };
+    }
 
     return (
         <div className="min-h-screen bg-gray-100">
@@ -422,8 +412,7 @@ export default function Home() {
                     {!connected ? (
                         <button
                             onClick={connectWallet}
-                            className="bg-white text-green-600 px-4 py-2 rounded-md font-medium hover:bg-gray-100"
-                        >
+                            className="bg-white text-green-600 px-4 py-2 rounded-md font-medium hover:bg-gray-100">
                             Connect Wallet
                         </button>
                     ) : (
@@ -432,8 +421,7 @@ export default function Home() {
                                 <select
                                     value={account}
                                     onChange={(e) => switchAccount(e.target.value)}
-                                    className="bg-white text-green-600 px-4 py-2 rounded-md font-medium appearance-none cursor-pointer pr-8"
-                                >
+                                    className="bg-white text-green-600 px-4 py-2 rounded-md font-medium appearance-none cursor-pointer pr-8">
                                     {accounts.map((addr) => (
                                         <option key={addr} value={addr}>
                                             {addr.substring(0, 6)}...{addr.substring(addr.length - 4)}
@@ -441,14 +429,15 @@ export default function Home() {
                                     ))}
                                 </select>
                                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-green-600">
-                                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                    <svg
+                                        className="fill-current h-4 w-4"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 20 20">
                                         <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
                                     </svg>
                                 </div>
                             </div>
-                            <span className="bg-green-700 px-3 py-1 rounded-full text-sm">
-                                {balance} REC
-                            </span>
+                            <span className="bg-green-700 px-3 py-1 rounded-full text-sm">{balance} REC</span>
                         </div>
                     )}
                 </div>
@@ -458,11 +447,12 @@ export default function Home() {
                 {!connected ? (
                     <div className="text-center py-20">
                         <h2 className="text-2xl font-bold mb-4">Welcome to the Renewable Energy Marketplace</h2>
-                        <p className="mb-8 text-gray-600">Connect your wallet to start trading renewable energy credits</p>
+                        <p className="mb-8 text-gray-600">
+                            Connect your wallet to start trading renewable energy credits
+                        </p>
                         <button
                             onClick={connectWallet}
-                            className="bg-green-600 text-white px-6 py-3 rounded-md font-medium hover:bg-green-700"
-                        >
+                            className="bg-green-600 text-white px-6 py-3 rounded-md font-medium hover:bg-green-700">
                             Connect Wallet
                         </button>
                     </div>
@@ -488,7 +478,7 @@ export default function Home() {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {activeListings.map(listing => (
+                                                {activeListings.map((listing) => (
                                                     <tr key={listing.id} className="border-b hover:bg-gray-50">
                                                         <td className="py-3">{listing.id}</td>
                                                         <td className="py-3">{listing.energySource}</td>
@@ -498,9 +488,16 @@ export default function Home() {
                                                         <td className="py-3">
                                                             {listing.seller.toLowerCase() !== account.toLowerCase() && (
                                                                 <button
-                                                                    onClick={() => buyListing(listing.id, (parseFloat(listing.tokenAmount) * parseFloat(listing.pricePerToken)).toString())}
-                                                                    className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-                                                                >
+                                                                    onClick={() =>
+                                                                        buyListing(
+                                                                            listing.id,
+                                                                            (
+                                                                                parseFloat(listing.tokenAmount) *
+                                                                                parseFloat(listing.pricePerToken)
+                                                                            ).toString()
+                                                                        )
+                                                                    }
+                                                                    className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">
                                                                     Buy
                                                                 </button>
                                                             )}
@@ -531,7 +528,7 @@ export default function Home() {
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {certificates.map(cert => (
+                                                    {certificates.map((cert) => (
                                                         <tr key={cert.id} className="border-b hover:bg-gray-50">
                                                             <td className="py-3">{cert.id}</td>
                                                             <td className="py-3">{cert.energySource}</td>
@@ -568,12 +565,18 @@ export default function Home() {
                                                 </label>
                                                 <select
                                                     value={newCertificate.energySource}
-                                                    onChange={(e) => setNewCertificate({ ...newCertificate, energySource: e.target.value })}
+                                                    onChange={(e) =>
+                                                        setNewCertificate({
+                                                            ...newCertificate,
+                                                            energySource: e.target.value,
+                                                        })
+                                                    }
                                                     className="w-full p-2 border border-gray-300 rounded"
-                                                    required
-                                                >
-                                                    {energySources.map(source => (
-                                                        <option key={source} value={source}>{source}</option>
+                                                    required>
+                                                    {energySources.map((source) => (
+                                                        <option key={source} value={source}>
+                                                            {source}
+                                                        </option>
                                                     ))}
                                                 </select>
                                             </div>
@@ -584,7 +587,12 @@ export default function Home() {
                                                 <input
                                                     type="number"
                                                     value={newCertificate.kWhProduced}
-                                                    onChange={(e) => setNewCertificate({ ...newCertificate, kWhProduced: e.target.value })}
+                                                    onChange={(e) =>
+                                                        setNewCertificate({
+                                                            ...newCertificate,
+                                                            kWhProduced: e.target.value,
+                                                        })
+                                                    }
                                                     className="w-full p-2 border border-gray-300 rounded"
                                                     placeholder="Amount of energy produced"
                                                     required
@@ -597,7 +605,12 @@ export default function Home() {
                                                 <input
                                                     type="text"
                                                     value={newCertificate.location}
-                                                    onChange={(e) => setNewCertificate({ ...newCertificate, location: e.target.value })}
+                                                    onChange={(e) =>
+                                                        setNewCertificate({
+                                                            ...newCertificate,
+                                                            location: e.target.value,
+                                                        })
+                                                    }
                                                     className="w-full p-2 border border-gray-300 rounded"
                                                     placeholder="Location where energy was produced"
                                                     required
@@ -606,8 +619,7 @@ export default function Home() {
                                         </div>
                                         <button
                                             type="submit"
-                                            className="mt-4 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-                                        >
+                                            className="mt-4 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
                                             Submit Certificate
                                         </button>
                                     </form>
@@ -642,14 +654,14 @@ export default function Home() {
                                     <div className="mb-4">
                                         <p className="font-medium">Energy Types</p>
                                         <div className="flex flex-wrap gap-2 mt-1">
-                                            {producerInfo?.energyTypes && producerInfo.energyTypes.map((type) => (
-                                                <span
-                                                    key={type}
-                                                    className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm"
-                                                >
-                                                    {type}
-                                                </span>
-                                            ))}
+                                            {producerInfo?.energyTypes &&
+                                                producerInfo.energyTypes.map((type) => (
+                                                    <span
+                                                        key={type}
+                                                        className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
+                                                        {type}
+                                                    </span>
+                                                ))}
                                         </div>
                                     </div>
                                     <div className="mb-4">
@@ -668,7 +680,12 @@ export default function Home() {
                                             <input
                                                 type="text"
                                                 value={producerRegistration.name}
-                                                onChange={(e) => setProducerRegistration({ ...producerRegistration, name: e.target.value })}
+                                                onChange={(e) =>
+                                                    setProducerRegistration({
+                                                        ...producerRegistration,
+                                                        name: e.target.value,
+                                                    })
+                                                }
                                                 className="w-full p-2 border border-gray-300 rounded"
                                                 placeholder="Company or individual name"
                                                 required
@@ -681,7 +698,12 @@ export default function Home() {
                                             <input
                                                 type="text"
                                                 value={producerRegistration.location}
-                                                onChange={(e) => setProducerRegistration({ ...producerRegistration, location: e.target.value })}
+                                                onChange={(e) =>
+                                                    setProducerRegistration({
+                                                        ...producerRegistration,
+                                                        location: e.target.value,
+                                                    })
+                                                }
                                                 className="w-full p-2 border border-gray-300 rounded"
                                                 placeholder="Physical location of production"
                                                 required
@@ -692,13 +714,15 @@ export default function Home() {
                                                 Energy Types
                                             </label>
                                             <div className="space-y-2">
-                                                {energySources.map(source => (
+                                                {energySources.map((source) => (
                                                     <div key={source} className="flex items-center">
                                                         <input
                                                             type="checkbox"
                                                             id={`energy-${source}`}
                                                             checked={producerRegistration.energyTypes.includes(source)}
-                                                            onChange={(e) => handleEnergyTypeChange(source, e.target.checked)}
+                                                            onChange={(e) =>
+                                                                handleEnergyTypeChange(source, e.target.checked)
+                                                            }
                                                             className="mr-2"
                                                         />
                                                         <label htmlFor={`energy-${source}`}>{source}</label>
@@ -713,7 +737,12 @@ export default function Home() {
                                             <input
                                                 type="number"
                                                 value={producerRegistration.capacityKW}
-                                                onChange={(e) => setProducerRegistration({ ...producerRegistration, capacityKW: e.target.value })}
+                                                onChange={(e) =>
+                                                    setProducerRegistration({
+                                                        ...producerRegistration,
+                                                        capacityKW: e.target.value,
+                                                    })
+                                                }
                                                 className="w-full p-2 border border-gray-300 rounded"
                                                 placeholder="Production capacity"
                                                 required
@@ -721,8 +750,7 @@ export default function Home() {
                                         </div>
                                         <button
                                             type="submit"
-                                            className="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-                                        >
+                                            className="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
                                             Register
                                         </button>
                                     </form>
@@ -750,10 +778,14 @@ export default function Home() {
                                                 </thead>
                                                 <tbody>
                                                     {producersToVerify.map((producer) => (
-                                                        <tr key={producer.address} className="border-b hover:bg-gray-50">
+                                                        <tr
+                                                            key={producer.address}
+                                                            className="border-b hover:bg-gray-50">
                                                             <td className="py-3">
                                                                 {producer.address.substring(0, 6)}...
-                                                                {producer.address.substring(producer.address.length - 4)}
+                                                                {producer.address.substring(
+                                                                    producer.address.length - 4
+                                                                )}
                                                             </td>
                                                             <td className="py-3">{producer.name}</td>
                                                             <td className="py-3">{producer.location}</td>
@@ -762,8 +794,7 @@ export default function Home() {
                                                                     {producer.energyTypes.map((type) => (
                                                                         <span
                                                                             key={type}
-                                                                            className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm"
-                                                                        >
+                                                                            className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
                                                                             {type}
                                                                         </span>
                                                                     ))}
@@ -774,8 +805,7 @@ export default function Home() {
                                                             <td className="py-3">
                                                                 <button
                                                                     onClick={() => verifyProducer(producer.address)}
-                                                                    className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-                                                                >
+                                                                    className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">
                                                                     Verify
                                                                 </button>
                                                             </td>
@@ -798,7 +828,9 @@ export default function Home() {
                                         <input
                                             type="text"
                                             value={newListing.tokenAmount}
-                                            onChange={(e) => setNewListing({ ...newListing, tokenAmount: e.target.value })}
+                                            onChange={(e) =>
+                                                setNewListing({ ...newListing, tokenAmount: e.target.value })
+                                            }
                                             className="w-full p-2 border border-gray-300 rounded"
                                             placeholder="Amount of REC tokens"
                                             required
@@ -811,7 +843,9 @@ export default function Home() {
                                         <input
                                             type="text"
                                             value={newListing.pricePerToken}
-                                            onChange={(e) => setNewListing({ ...newListing, pricePerToken: e.target.value })}
+                                            onChange={(e) =>
+                                                setNewListing({ ...newListing, pricePerToken: e.target.value })
+                                            }
                                             className="w-full p-2 border border-gray-300 rounded"
                                             placeholder="Price in ETH"
                                             required
@@ -823,12 +857,15 @@ export default function Home() {
                                         </label>
                                         <select
                                             value={newListing.energySource}
-                                            onChange={(e) => setNewListing({ ...newListing, energySource: e.target.value })}
+                                            onChange={(e) =>
+                                                setNewListing({ ...newListing, energySource: e.target.value })
+                                            }
                                             className="w-full p-2 border border-gray-300 rounded"
-                                            required
-                                        >
-                                            {energySources.map(source => (
-                                                <option key={source} value={source}>{source}</option>
+                                            required>
+                                            {energySources.map((source) => (
+                                                <option key={source} value={source}>
+                                                    {source}
+                                                </option>
                                             ))}
                                         </select>
                                     </div>
@@ -839,7 +876,9 @@ export default function Home() {
                                         <input
                                             type="number"
                                             value={newListing.kWhRepresented}
-                                            onChange={(e) => setNewListing({ ...newListing, kWhRepresented: e.target.value })}
+                                            onChange={(e) =>
+                                                setNewListing({ ...newListing, kWhRepresented: e.target.value })
+                                            }
                                             className="w-full p-2 border border-gray-300 rounded"
                                             placeholder="Amount of energy in kWh"
                                             required
@@ -848,8 +887,7 @@ export default function Home() {
                                     <button
                                         type="submit"
                                         className="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-                                        disabled={parseFloat(balance) < parseFloat(newListing.tokenAmount)}
-                                    >
+                                        disabled={parseFloat(balance) < parseFloat(newListing.tokenAmount)}>
                                         Create Listing
                                     </button>
                                     {parseFloat(balance) < parseFloat(newListing.tokenAmount) && (
@@ -873,5 +911,5 @@ export default function Home() {
                 </div>
             </footer>
         </div>
-    );
+    )
 }

@@ -106,8 +106,13 @@ contract EnergyMarketplace {
             revert("Invalid energy source");
         }
 
+        // Verify this contract is the market controller before minting
+        address currentController = tokenContract.marketController();
+        require(currentController == address(this), "Marketplace is not authorized as the market controller");
+
         // Mint tokens to the producer
-        tokenContract.mint(cert.producer, tokenAmount, energySourceEnum, cert.kWhProduced);
+        bool mintSuccess = tokenContract.mint(cert.producer, tokenAmount, energySourceEnum, cert.kWhProduced);
+        require(mintSuccess, "Token minting failed");
 
         // Update certificate
         cert.verified = true;

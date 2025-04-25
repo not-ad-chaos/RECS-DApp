@@ -129,7 +129,23 @@ contract RenewableEnergyCertification {
         require(registeredProducers[msg.sender], "Must be a registered producer");
         require(producers[msg.sender].verified, "Producer must be verified");
 
-        return marketplace.createCertificate(energySource, kWhProduced, location);
+        // Check if the energy source is valid
+        bool validEnergySource = false;
+        for (uint i = 0; i < producers[msg.sender].energyTypes.length; i++) {
+            if (keccak256(abi.encodePacked(producers[msg.sender].energyTypes[i])) == 
+                keccak256(abi.encodePacked(energySource))) {
+                validEnergySource = true;
+                break;
+            }
+        }
+        require(validEnergySource, "Energy source not registered for this producer");
+
+        // Call the marketplace contract to create a certificate
+        try marketplace.createCertificate(energySource, kWhProduced, location) returns (uint256 certificateId) {
+            return certificateId;
+        } catch {
+            revert("Failed to create certificate in marketplace");
+        }
     }
 
     function transferOwnership(address newAdmin) public onlyAdmin {

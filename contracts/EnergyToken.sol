@@ -13,6 +13,7 @@ contract EnergyToken {
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
     event Mint(address indexed to, uint256 value, string energySource, uint256 kWhProduced);
+    event MarketControllerChanged(address indexed previousController, address indexed newController);
 
     // Energy source types for minting
     enum EnergySource { Solar, Wind, Hydro, Biomass, Geothermal }
@@ -74,7 +75,10 @@ contract EnergyToken {
     }
 
     function changeMarketController(address newController) public onlyMarketController {
+        require(newController != address(0), "New controller cannot be zero address");
+        address oldController = marketController;
         marketController = newController;
+        emit MarketControllerChanged(oldController, newController);
     }
 }
 

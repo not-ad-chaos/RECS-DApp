@@ -141,7 +141,7 @@ contract RenewableEnergyCertification {
         require(validEnergySource, "Energy source not registered for this producer");
 
         // Call the marketplace contract to create a certificate
-        try marketplace.createCertificate(energySource, kWhProduced, location) returns (uint256 certificateId) {
+        try marketplace.createCertificate(msg.sender, energySource, kWhProduced, location) returns (uint256 certificateId) {
             return certificateId;
         } catch {
             revert("Failed to create certificate in marketplace");

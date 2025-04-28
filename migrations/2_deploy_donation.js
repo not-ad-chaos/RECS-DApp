@@ -3,6 +3,7 @@ const path = require("path")
 const EnergyToken = artifacts.require("EnergyToken")
 const EnergyMarketplace = artifacts.require("EnergyMarketplace")
 const RenewableEnergyCertification = artifacts.require("RenewableEnergyCertification")
+const ethers = require("ethers")
 
 module.exports = async function (deployer, network, accounts) {
     try {
@@ -42,10 +43,43 @@ module.exports = async function (deployer, network, accounts) {
             console.log("Market controller successfully updated to marketplace address")
         }
 
+        // Add verifier role to deployer account
+        console.log("Adding marketplace verifier...")
+        await energyMarketplace.addVerifier(accounts[0])
+        console.log("Verifier added:", accounts[0])
+
         // Add the first auditor to the certification system
         console.log("Adding first auditor to certification system...")
         await renewableCertification.authorizeAuditor(accounts[1])
         console.log("First auditor added:", accounts[1])
+
+        // List of accounts to mint tokens for
+        const accountsToMint = [
+            "0x401EE82A841dc6B56DAe765bBBF3456Ea79F3B56",
+            "0x7cc3C7E69e1aa0C941E8E34C9c4c9b52B1AfF017",
+            "0x9A7AF3B3185bc257CBe60065f1C885F099df4202",
+            "0xC8240797A9aB72eB604c58ac5EA158B27a0881c0",
+            "0xd69aA3AFc727e578B3648E9b27a549c03D251CC6",
+        ]
+
+        // Mint tokens directly to each account
+        console.log("Minting 50 REC tokens for test accounts...")
+        for (const account of accountsToMint) {
+            console.log(`Minting tokens for account: ${account}`)
+            try {
+                // Mint 50 tokens directly to the account - using Solar as default energy source
+                const tokenAmount = ethers.utils.parseEther("50") // 50 REC tokens
+                const mintTx = await energyToken.mint(
+                    account, // recipient address
+                    tokenAmount, // 50 tokens
+                    0, // Energy source enum (0 = Solar)
+                    "1000" // kWh produced (just a placeholder value)
+                )
+                console.log(`Successfully minted 50 REC tokens for ${account}, tx: ${mintTx.tx}`)
+            } catch (error) {
+                console.error(`Error minting tokens for account ${account}:`, error.message)
+            }
+        }
 
         // Write contract addresses to file
         const contracts = {

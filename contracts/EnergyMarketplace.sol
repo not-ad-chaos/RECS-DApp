@@ -65,6 +65,7 @@ contract EnergyMarketplace {
     }
 
     function createCertificate(
+        address producer,
         string memory energySource,
         uint256 kWhProduced,
         string memory location
@@ -73,7 +74,7 @@ contract EnergyMarketplace {
 
         certificates[certificateCount] = Certificate({
             id: certificateCount,
-            producer: msg.sender,
+            producer: producer,
             energySource: energySource,
             kWhProduced: kWhProduced,
             tokenAmount: 0, // Will be set when verified
@@ -82,7 +83,7 @@ contract EnergyMarketplace {
             verified: false
         });
 
-        emit CertificateCreated(certificateCount, msg.sender, energySource, kWhProduced);
+        emit CertificateCreated(certificateCount, producer, energySource, kWhProduced);
         return certificateCount;
     }
 

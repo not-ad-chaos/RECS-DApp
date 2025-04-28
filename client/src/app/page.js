@@ -115,6 +115,34 @@ export default function Home() {
 
     const energySources = ["Solar", "Wind", "Hydro", "Biomass", "Geothermal"]
 
+    // Add a specific function to refresh balance
+    const refreshBalance = async () => {
+        try {
+            if (!energyTokenContract || !account) return
+
+            console.log("Refreshing token balance for account:", account)
+            const balance = await energyTokenContract.balanceOf(account)
+            const formattedBalance = ethers.formatEther(balance)
+            console.log("Updated balance:", formattedBalance, "REC")
+            setBalance(formattedBalance)
+        } catch (error) {
+            console.error("Error refreshing balance:", error)
+        }
+    }
+
+    // Call refreshBalance every 10 seconds and when the component mounts
+    useEffect(() => {
+        if (connected) {
+            refreshBalance()
+
+            // Set up interval to refresh balance
+            const intervalId = setInterval(refreshBalance, 10000)
+
+            // Clean up interval on component unmount
+            return () => clearInterval(intervalId)
+        }
+    }, [connected, account, energyTokenContract])
+
     // Connect wallet - simplified to just connect with whatever is available
     const connectWallet = async () => {
         try {
@@ -158,6 +186,11 @@ export default function Home() {
                 energyMarketplaceContract,
                 renewableEnergyCerticiationContract
             )
+
+            // Explicitly refresh balance after connection
+            setTimeout(() => {
+                refreshBalance()
+            }, 2000)
 
             return true
         } catch (error) {
@@ -234,6 +267,11 @@ export default function Home() {
                 energyMarketplaceContract,
                 renewableEnergyCerticiationContract
             )
+
+            // Explicitly refresh balance after switching accounts
+            setTimeout(() => {
+                refreshBalance()
+            }, 2000)
         } catch (error) {
             console.error("Error switching account:", error)
         }
@@ -287,7 +325,7 @@ export default function Home() {
         }
     }
 
-    // Load certificates - Updated to use EnergyMarketplace contract
+    // Load certificates from marketplace contract
     const loadCertificates = async (account, marketplaceContract) => {
         try {
             if (!marketplaceContract) {
@@ -295,17 +333,26 @@ export default function Home() {
                 return
             }
 
-            // Get certificate count from marketplace contract as a property
-            console.log("Loading certificates from marketplace contract...")
+            // Get certificate count from marketplace contract
+            console.log("Loading certificates from marketplace contract for account:", account)
             const certificateCount = await marketplaceContract.certificateCount()
-            console.log("Certificate count:", certificateCount.toString())
+            console.log("Total certificate count:", certificateCount.toString())
             const certs = []
 
+            // Loop through all certificates
             for (let i = 1; i <= Number(certificateCount); i++) {
                 try {
                     const cert = await marketplaceContract.certificates(i)
-                    console.log("Certificate:", cert, cert.producer)
-                    // Only add certificates for the current account
+
+                    // Log certificate details for debugging
+                    console.log(`Certificate ${i}:`, {
+                        id: cert.id.toString(),
+                        producer: cert.producer,
+                        currentAccount: account,
+                        match: cert.producer.toLowerCase() === account.toLowerCase(),
+                    })
+
+                    // Add certificates that belong to the current account
                     if (cert.producer.toLowerCase() === account.toLowerCase()) {
                         certs.push({
                             id: cert.id.toString(),
@@ -316,6 +363,7 @@ export default function Home() {
                             location: cert.location,
                             verified: cert.verified,
                         })
+                        console.log("Added certificate to display list")
                     }
                 } catch (certError) {
                     console.error(`Error loading certificate ${i}:`, certError)
@@ -323,7 +371,7 @@ export default function Home() {
                 }
             }
 
-            console.log("Loaded certificates:", certs.length)
+            console.log("Loaded certificates for display:", certs.length)
             setCertificates(certs)
         } catch (error) {
             console.error("Error loading certificates:", error)
@@ -424,8 +472,11 @@ export default function Home() {
         e.preventDefault()
 
         try {
-            // Submit the certificate to the blockchain
-            const tx = await renewableEnergyCerticiationContract.submitEnergyCertificate(
+            console.log("Creating certificate directly with marketplace contract...")
+
+            // Call the marketplace contract directly instead of going through the certification contract
+            const tx = await energyMarketplaceContract.createCertificate(
+                account, // Pass the producer address explicitly (current wallet)
                 newCertificate.energySource,
                 newCertificate.kWhProduced,
                 newCertificate.location
@@ -433,6 +484,7 @@ export default function Home() {
 
             console.log("Transaction sent, waiting for confirmation...")
             const receipt = await tx.wait()
+            console.log("Certificate created at tx hash:", receipt.hash)
 
             // Reset form and reload certificates
             setNewCertificate({
@@ -551,6 +603,58 @@ export default function Home() {
         }
     }
 
+    // Add a debug function to check contract interactions
+    const debugContracts = async () => {
+        if (!energyMarketplaceContract || !renewableEnergyCerticiationContract || !energyTokenContract) {
+            console.error("Contracts not initialized")
+            return
+        }
+
+        try {
+            console.log("===== CONTRACT DEBUGGING =====")
+            console.log("Current account:", account)
+
+            // Check token balance directly
+            try {
+                const rawBalance = await energyTokenContract.balanceOf(account)
+                console.log("Raw token balance for account:", rawBalance.toString(), account)
+                console.log("Formatted token balance:", ethers.formatEther(rawBalance), "REC")
+
+                // Check token contract address
+                console.log("Token contract address:", energyTokenContract.target)
+                console.log("Token contract in JSON:", ENERGY_TOKEN_ADDRESS)
+
+                // Check total supply
+                const totalSupply = await energyTokenContract.totalSupply()
+                console.log("Total token supply:", ethers.formatEther(totalSupply), "REC")
+
+                // Update the balance state for immediate UI feedback
+                setBalance(ethers.formatEther(rawBalance))
+            } catch (balanceError) {
+                console.error("Error checking token balance:", balanceError)
+            }
+
+            // Check certificateCount
+            const mpCertCount = await energyMarketplaceContract.certificateCount()
+            console.log("Marketplace certificate count:", mpCertCount.toString())
+
+            // Check certificate structure
+            if (mpCertCount > 0) {
+                const firstCert = await energyMarketplaceContract.certificates(1)
+                console.log("First certificate in marketplace:", {
+                    id: firstCert.id.toString(),
+                    producer: firstCert.producer,
+                    energySource: firstCert.energySource,
+                    kWhProduced: firstCert.kWhProduced.toString(),
+                })
+            }
+
+            console.log("============================")
+        } catch (error) {
+            console.error("Debug error:", error)
+        }
+    }
+
     return (
         <div className="min-h-screen bg-gray-100">
             <Head>
@@ -594,11 +698,21 @@ export default function Home() {
                                     </svg>
                                 </div>
                             </div>
-                            <span className="bg-green-700 px-3 py-1 rounded-full text-sm">{balance} REC</span>
+                            <span
+                                className="bg-green-700 px-3 py-1 rounded-full text-sm cursor-pointer hover:bg-green-800"
+                                onClick={refreshBalance}
+                                title="Click to refresh balance">
+                                {balance} REC
+                            </span>
                             <button
                                 onClick={disconnectWallet}
                                 className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700">
                                 Disconnect
+                            </button>
+                            <button
+                                onClick={debugContracts}
+                                className="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700">
+                                Debug
                             </button>
                         </div>
                     )}

@@ -152,7 +152,12 @@ export default function Home() {
             setRenewableEnergyCertificateContract(renewableEnergyCerticiationContract)
 
             // Now load user data after contracts are initialized
-            await loadUserData(allAccounts[0].address, energyTokenContract, energyMarketplaceContract, renewableEnergyCerticiationContract)
+            await loadUserData(
+                allAccounts[0].address,
+                energyTokenContract,
+                energyMarketplaceContract,
+                renewableEnergyCerticiationContract
+            )
 
             return true
         } catch (error) {
@@ -223,14 +228,24 @@ export default function Home() {
             setRenewableEnergyCertificateContract(renewableEnergyCerticiationContract)
 
             // Reload user data for new account
-            await loadUserData(newAddress, energyTokenContract, energyMarketplaceContract, renewableEnergyCerticiationContract)
+            await loadUserData(
+                newAddress,
+                energyTokenContract,
+                energyMarketplaceContract,
+                renewableEnergyCerticiationContract
+            )
         } catch (error) {
             console.error("Error switching account:", error)
         }
     }
 
     // Load user data
-    const loadUserData = async (account, energyTokenContract, energyMarketplaceContract, renewableEnergyCerticiationContract) => {
+    const loadUserData = async (
+        account,
+        energyTokenContract,
+        energyMarketplaceContract,
+        renewableEnergyCerticiationContract
+    ) => {
         try {
             // Get token balance
             const balance = await energyTokenContract.balanceOf(account)
@@ -263,8 +278,8 @@ export default function Home() {
             // Load active listings
             await loadActiveListings(energyMarketplaceContract)
 
-            // Load certificates with certification contract
-            await loadCertificates(account)
+            // Load certificates with marketplace contract (CORRECTED)
+            await loadCertificates(account, energyMarketplaceContract)
 
             console.log("User data loaded successfully for account:", account)
         } catch (error) {
@@ -272,23 +287,24 @@ export default function Home() {
         }
     }
 
-    // Load certificates - Updated to handle BigInt values
-    const loadCertificates = async (account) => {
+    // Load certificates - Updated to use EnergyMarketplace contract
+    const loadCertificates = async (account, marketplaceContract) => {
         try {
-            if (!renewableEnergyCerticiationContract) {
-                console.error("Cannot load certificates - contract not initialized")
+            if (!marketplaceContract) {
+                console.error("Cannot load certificates - marketplace contract not initialized")
                 return
             }
 
-            // Get certificate count from certification contract - as a property, not a function
-            console.log("lmao loading certificates:", renewableEnergyCerticiationContract)
-            const certificateCount = await renewableEnergyCerticiationContract.certificateCount()
+            // Get certificate count from marketplace contract as a property
+            console.log("Loading certificates from marketplace contract...")
+            const certificateCount = await marketplaceContract.certificateCount()
             console.log("Certificate count:", certificateCount.toString())
             const certs = []
 
             for (let i = 1; i <= Number(certificateCount); i++) {
                 try {
-                    const cert = await renewableEnergyCerticiationContract.certificates(i)
+                    const cert = await marketplaceContract.certificates(i)
+                    console.log("Certificate:", cert, cert.producer)
                     // Only add certificates for the current account
                     if (cert.producer.toLowerCase() === account.toLowerCase()) {
                         certs.push({
@@ -317,10 +333,10 @@ export default function Home() {
     // Load active marketplace listings
     const loadActiveListings = async (energyMarketplaceContract) => {
         try {
-            // Get the count of all listings - as a property, not a function
+            // Get the count of all listings as a property (not a function)
             const count = await energyMarketplaceContract.listingCount()
             let listings = []
-            console.log("Active listing count:", count)
+            console.log("Active listing count:", count.toString())
 
             // Loop through all listings and add the active ones to our state
             for (let i = 1; i <= Number(count); i++) {
@@ -427,7 +443,7 @@ export default function Home() {
 
             // Load certificates after a short delay to ensure blockchain state is updated
             setTimeout(() => {
-                loadCertificates(account)
+                loadCertificates(account, energyMarketplaceContract)
             }, 2000)
 
             return true
@@ -523,7 +539,12 @@ export default function Home() {
 
             // If this was the current user being verified, reload their data
             if (producerAddress.toLowerCase() === account.toLowerCase()) {
-                await loadUserData(account, energyTokenContract, energyMarketplaceContract, renewableEnergyCerticiationContract)
+                await loadUserData(
+                    account,
+                    energyTokenContract,
+                    energyMarketplaceContract,
+                    renewableEnergyCerticiationContract
+                )
             }
         } catch (error) {
             console.error("Error verifying producer:", error)
@@ -671,7 +692,7 @@ export default function Home() {
                                     <div className="flex justify-between items-center mb-4">
                                         <h2 className="text-xl font-bold">Your Certificates</h2>
                                         <button
-                                            onClick={() => loadCertificates(account)}
+                                            onClick={() => loadCertificates(account, energyMarketplaceContract)}
                                             className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 flex items-center">
                                             <svg
                                                 xmlns="http://www.w3.org/2000/svg"

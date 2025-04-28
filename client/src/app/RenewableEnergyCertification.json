@@ -21439,14 +21439,224 @@
   },
   "networks": {
     "1745565604818": {
-      "events": {},
+      "events": {
+        "0xfc63a025c64dc65123c35b0d4a16bc51610a09de1acb9a0bed6393a9fec5038d": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "reportId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "producer",
+              "type": "address"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "auditor",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "bool",
+              "name": "passed",
+              "type": "bool"
+            }
+          ],
+          "name": "AuditReportFiled",
+          "type": "event"
+        },
+        "0x7bcf8161dba1805d02b64f93065085912ef8115e91fee268661f2262f1b2f135": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "auditor",
+              "type": "address"
+            }
+          ],
+          "name": "AuditorAuthorized",
+          "type": "event"
+        },
+        "0xeb2a2eb059f7ce22cdb9ce6710a0df23c2e8d5ca169ee77629faa99f8c788a01": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "auditor",
+              "type": "address"
+            }
+          ],
+          "name": "AuditorRevoked",
+          "type": "event"
+        },
+        "0x8e352259c32bcb7226d89eb7747d2bee6c6483666cb0045b6a74841a95c3497e": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "producerAddress",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "string",
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "capacityKW",
+              "type": "uint256"
+            }
+          ],
+          "name": "ProducerRegistered",
+          "type": "event"
+        },
+        "0x29c5fb292d73374add83bddc6d2b9b9161c7212031cc75fc47eb8c31bda10d9c": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "producerAddress",
+              "type": "address"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "auditor",
+              "type": "address"
+            }
+          ],
+          "name": "ProducerVerified",
+          "type": "event"
+        }
+      },
       "links": {},
-      "address": "0x5e8e8B9bbb051964a5514156C5B3091CB5B3bC15",
-      "transactionHash": "0x9fac64fb96d98d4fb31be36f5bbd5862e060a84db3c20e658073e30cd51f8612"
+      "address": "0x3Ebd622A43f1674c0610F854bdae543a6c874842",
+      "transactionHash": "0x77578bee6e37002a5cab54444fcca1f0132125ec8662d7838ccf33004625632d"
+    },
+    "1745818850992": {
+      "events": {
+        "0xfc63a025c64dc65123c35b0d4a16bc51610a09de1acb9a0bed6393a9fec5038d": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "reportId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "producer",
+              "type": "address"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "auditor",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "bool",
+              "name": "passed",
+              "type": "bool"
+            }
+          ],
+          "name": "AuditReportFiled",
+          "type": "event"
+        },
+        "0x7bcf8161dba1805d02b64f93065085912ef8115e91fee268661f2262f1b2f135": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "auditor",
+              "type": "address"
+            }
+          ],
+          "name": "AuditorAuthorized",
+          "type": "event"
+        },
+        "0xeb2a2eb059f7ce22cdb9ce6710a0df23c2e8d5ca169ee77629faa99f8c788a01": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "auditor",
+              "type": "address"
+            }
+          ],
+          "name": "AuditorRevoked",
+          "type": "event"
+        },
+        "0x8e352259c32bcb7226d89eb7747d2bee6c6483666cb0045b6a74841a95c3497e": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "producerAddress",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "string",
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "capacityKW",
+              "type": "uint256"
+            }
+          ],
+          "name": "ProducerRegistered",
+          "type": "event"
+        },
+        "0x29c5fb292d73374add83bddc6d2b9b9161c7212031cc75fc47eb8c31bda10d9c": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "producerAddress",
+              "type": "address"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "auditor",
+              "type": "address"
+            }
+          ],
+          "name": "ProducerVerified",
+          "type": "event"
+        }
+      },
+      "links": {},
+      "address": "0x2e873a8ff520Efe2c113dc131ED4e4c682059e60",
+      "transactionHash": "0x01d54397263c7e64a12553e497235293f354d2813c9802ffb61455365a6686b8"
     }
   },
   "schemaVersion": "3.4.16",
-  "updatedAt": "2025-04-25T07:36:19.000Z",
+  "updatedAt": "2025-04-28T05:59:45.498Z",
   "devdoc": {
     "kind": "dev",
     "methods": {},

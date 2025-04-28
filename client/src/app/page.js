@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ethers } from "ethers"
 import Web3Modal from "web3modal"
 import Head from "next/head"
@@ -31,6 +31,66 @@ export default function Home() {
     const [isAuditor, setIsAuditor] = useState(false)
     const [producersToVerify, setProducersToVerify] = useState([])
     const [accounts, setAccounts] = useState([])
+    const [checkingWallet, setCheckingWallet] = useState(true) // New state to track initial wallet check
+
+    // Known account labels mapping
+    const knownAccounts = {
+        "0x401EE82A841dc6B56DAe765bBBF3456Ea79F3B56": "Account 1",
+        "0x7cc3C7E69e1aa0C941E8E34C9c4c9b52B1AfF017": "Account 2",
+        "0x9A7AF3B3185bc257CBe60065f1C885F099df4202": "Account 3",
+        "0xC8240797A9aB72eB604c58ac5EA158B27a0881c0": "Account 4",
+    }
+
+    // Check for active wallets when page loads
+    useEffect(() => {
+        const checkForActiveWallets = async () => {
+            setCheckingWallet(true)
+            try {
+                // Check if Ethereum provider exists (like MetaMask)
+                if (window.ethereum) {
+                    // Check if accounts are already connected
+                    const accounts = await window.ethereum.request({ method: "eth_accounts" })
+
+                    if (accounts && accounts.length > 0) {
+                        // Wallet is already connected, initialize
+                        const success = await connectWallet()
+
+                        if (success) {
+                            console.log("Wallet auto-connected successfully")
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Error checking for active wallets:", error)
+            } finally {
+                setCheckingWallet(false)
+            }
+        }
+
+        checkForActiveWallets()
+
+        // Add event listener for account changes
+        if (window.ethereum) {
+            window.ethereum.on("accountsChanged", (accounts) => {
+                if (accounts.length > 0) {
+                    // Auto reconnect with new account
+                    connectWallet()
+                } else {
+                    // Disconnect if all accounts disconnected
+                    disconnectWallet()
+                }
+            })
+        }
+
+        return () => {
+            // Remove event listener on component unmount
+            if (window.ethereum && window.ethereum.removeListener) {
+                window.ethereum.removeListener("accountsChanged", () => {
+                    console.log("Removed accountsChanged event listener")
+                })
+            }
+        }
+    }, [])
 
     // Form state
     const [newListing, setNewListing] = useState({
@@ -55,10 +115,13 @@ export default function Home() {
 
     const energySources = ["Solar", "Wind", "Hydro", "Biomass", "Geothermal"]
 
-    // Connect wallet
+    // Connect wallet - simplified to just connect with whatever is available
     const connectWallet = async () => {
         try {
-            const web3Modal = new Web3Modal()
+            const web3Modal = new Web3Modal({
+                cacheProvider: true,
+            })
+
             const connection = await web3Modal.connect()
             const ethProvider = new ethers.BrowserProvider(connection)
             const allAccounts = await ethProvider.listAccounts()
@@ -90,8 +153,42 @@ export default function Home() {
 
             // Now load user data after contracts are initialized
             await loadUserData(allAccounts[0].address, tokenContract, marketplaceContract, certificationContract)
+
+            return true
         } catch (error) {
             console.error("Error connecting wallet:", error)
+            return false
+        }
+    }
+
+    // Disconnect wallet
+    const disconnectWallet = async () => {
+        setConnected(false)
+        setAccount("")
+        setAccounts([])
+        setTokenContract(null)
+        setMarketplaceContract(null)
+        setCertificationContract(null)
+        setBalance("0")
+        setActiveListings([])
+        setCertificates([])
+        setIsProducer(false)
+        setProducerInfo(null)
+        setIsAuditor(false)
+        setProducersToVerify([])
+
+        // Clear Web3Modal cached provider
+        if (window.localStorage.getItem("WEB3_CONNECT_CACHED_PROVIDER")) {
+            window.localStorage.removeItem("WEB3_CONNECT_CACHED_PROVIDER")
+        }
+
+        // If using MetaMask or similar wallet
+        if (window.ethereum && window.ethereum.disconnect) {
+            try {
+                await window.ethereum.disconnect()
+            } catch (error) {
+                console.error("Error disconnecting:", error)
+            }
         }
     }
 
@@ -168,6 +265,8 @@ export default function Home() {
 
             // Load certificates with certification contract
             await loadCertificates(account, certificationContract)
+
+            console.log("User data loaded successfully for account:", account)
         } catch (error) {
             console.error("Error loading user data:", error)
         }
@@ -176,25 +275,38 @@ export default function Home() {
     // Load certificates - Updated to handle BigInt values
     const loadCertificates = async (account, certificationContract) => {
         try {
-            // Get certificate count from certification contract
+            if (!certificationContract) {
+                console.error("Cannot load certificates - contract not initialized")
+                return
+            }
+
+            // Get certificate count from certification contract - as a property, not a function
             const certificateCount = await certificationContract.certificateCount
-            console.log(certificateCount)
+            console.log("Certificate count:", certificateCount.toString())
             const certs = []
 
             for (let i = 1; i <= Number(certificateCount); i++) {
-                const cert = await certificationContract.certificates(i)
-                if (cert.producer.toLowerCase() === account.toLowerCase()) {
-                    certs.push({
-                        id: cert.id.toString(),
-                        energySource: cert.energySource,
-                        kWhProduced: cert.kWhProduced.toString(),
-                        timestamp: new Date(Number(cert.timestamp) * 1000).toLocaleString(),
-                        location: cert.location,
-                        verified: cert.verified,
-                    })
+                try {
+                    const cert = await certificationContract.certificates(i)
+                    // Only add certificates for the current account
+                    if (cert.producer.toLowerCase() === account.toLowerCase()) {
+                        certs.push({
+                            id: cert.id.toString(),
+                            energySource: cert.energySource,
+                            kWhProduced: cert.kWhProduced.toString(),
+                            tokenAmount: cert.tokenAmount ? cert.tokenAmount.toString() : "0",
+                            timestamp: new Date(Number(cert.timestamp) * 1000).toLocaleString(),
+                            location: cert.location,
+                            verified: cert.verified,
+                        })
+                    }
+                } catch (certError) {
+                    console.error(`Error loading certificate ${i}:`, certError)
+                    // Continue to next certificate
                 }
             }
 
+            console.log("Loaded certificates:", certs.length)
             setCertificates(certs)
         } catch (error) {
             console.error("Error loading certificates:", error)
@@ -204,25 +316,34 @@ export default function Home() {
     // Load active marketplace listings
     const loadActiveListings = async (marketplaceContract) => {
         try {
-            const listingCount = await marketplaceContract.listingCount()
-            const listings = []
+            // Get the count of all listings - as a property, not a function
+            const count = await marketplaceContract.listingCount
+            let listings = []
+            console.log("Active listing count:", count.toString())
 
-            console.log(listingCount)
-            for (let i = 1; i <= listingCount; i++) {
-                const listing = await marketplaceContract.listings(i)
-                if (listing.active) {
-                    listings.push({
-                        id: listing.id.toString(),
-                        seller: listing.seller,
-                        tokenAmount: ethers.formatEther(listing.tokenAmount),
-                        pricePerToken: ethers.formatEther(listing.pricePerToken),
-                        energySource: listing.energySource,
-                        kWhRepresented: listing.kWhRepresented.toString(),
-                        timestamp: new Date(listing.timestamp.toNumber() * 1000).toLocaleString(),
-                    })
+            // Loop through all listings and add the active ones to our state
+            for (let i = 1; i <= Number(count); i++) {
+                try {
+                    const listing = await marketplaceContract.listings(i)
+                    if (listing.active) {
+                        listings.push({
+                            id: listing.id.toString(),
+                            seller: listing.seller,
+                            sellerLabel: knownAccounts[listing.seller] || null,
+                            tokenAmount: ethers.formatEther(listing.tokenAmount),
+                            pricePerToken: ethers.formatEther(listing.pricePerToken),
+                            energySource: listing.energySource,
+                            kWhRepresented: listing.kWhRepresented.toString(),
+                            timestamp: new Date(Number(listing.timestamp) * 1000).toLocaleString(),
+                        })
+                    }
+                } catch (listingError) {
+                    console.error(`Error loading listing ${i}:`, listingError)
+                    // Continue to next listing
                 }
             }
 
+            console.log("Loaded active listings:", listings.length)
             setActiveListings(listings)
         } catch (error) {
             console.error("Error loading listings:", error)
@@ -286,24 +407,32 @@ export default function Home() {
         e.preventDefault()
 
         try {
+            // Submit the certificate to the blockchain
             const tx = await certificationContract.submitEnergyCertificate(
                 newCertificate.energySource,
                 newCertificate.kWhProduced,
                 newCertificate.location
             )
 
-            await tx.wait()
+            console.log("Transaction sent, waiting for confirmation...")
+            const receipt = await tx.wait()
 
-            // Reset form and reload certificates with certification contract
+            // Reset form and reload certificates
             setNewCertificate({
                 energySource: "Solar",
                 kWhProduced: "",
                 location: "",
             })
 
-            loadCertificates(account, certificationContract)
+            // Load certificates after a short delay to ensure blockchain state is updated
+            setTimeout(() => {
+                loadCertificates(account, certificationContract)
+            }, 2000)
+
+            return true
         } catch (error) {
             console.error("Error creating certificate:", error)
+            return false
         }
     }
 
@@ -359,6 +488,7 @@ export default function Home() {
                 if (!producer.verified) {
                     unverifiedProducers.push({
                         address: producerAddress,
+                        accountLabel: knownAccounts[producerAddress] || null,
                         name: producer.name,
                         location: producer.location,
                         energyTypes: Array.isArray(producer.energyTypes) ? producer.energyTypes : [],
@@ -409,7 +539,11 @@ export default function Home() {
             <header className="bg-green-600 text-white p-4">
                 <div className="container mx-auto flex justify-between items-center">
                     <h1 className="text-2xl font-bold">Renewable Energy Marketplace</h1>
-                    {!connected ? (
+                    {checkingWallet ? (
+                        <div className="bg-white text-green-600 px-4 py-2 rounded-md font-medium">
+                            Checking wallet...
+                        </div>
+                    ) : !connected ? (
                         <button
                             onClick={connectWallet}
                             className="bg-white text-green-600 px-4 py-2 rounded-md font-medium hover:bg-gray-100">
@@ -425,6 +559,7 @@ export default function Home() {
                                     {accounts.map((addr) => (
                                         <option key={addr} value={addr}>
                                             {addr.substring(0, 6)}...{addr.substring(addr.length - 4)}
+                                            {knownAccounts[addr] && ` (${knownAccounts[addr]})`}
                                         </option>
                                     ))}
                                 </select>
@@ -438,13 +573,23 @@ export default function Home() {
                                 </div>
                             </div>
                             <span className="bg-green-700 px-3 py-1 rounded-full text-sm">{balance} REC</span>
+                            <button
+                                onClick={disconnectWallet}
+                                className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700">
+                                Disconnect
+                            </button>
                         </div>
                     )}
                 </div>
             </header>
 
             <main className="container mx-auto py-8 px-4">
-                {!connected ? (
+                {checkingWallet ? (
+                    <div className="text-center py-20">
+                        <h2 className="text-xl font-bold mb-4">Loading...</h2>
+                        <p className="text-gray-600">Checking for connected wallets</p>
+                    </div>
+                ) : !connected ? (
                     <div className="text-center py-20">
                         <h2 className="text-2xl font-bold mb-4">Welcome to the Renewable Energy Marketplace</h2>
                         <p className="mb-8 text-gray-600">
@@ -470,6 +615,7 @@ export default function Home() {
                                             <thead>
                                                 <tr className="border-b">
                                                     <th className="text-left py-2">ID</th>
+                                                    <th className="text-left py-2">Seller</th>
                                                     <th className="text-left py-2">Energy Source</th>
                                                     <th className="text-left py-2">Amount (REC)</th>
                                                     <th className="text-left py-2">Price (ETH)</th>
@@ -481,6 +627,15 @@ export default function Home() {
                                                 {activeListings.map((listing) => (
                                                     <tr key={listing.id} className="border-b hover:bg-gray-50">
                                                         <td className="py-3">{listing.id}</td>
+                                                        <td className="py-3">
+                                                            {listing.seller.substring(0, 6)}...
+                                                            {listing.seller.substring(listing.seller.length - 4)}
+                                                            {listing.sellerLabel && (
+                                                                <span className="ml-1 bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded">
+                                                                    {listing.sellerLabel}
+                                                                </span>
+                                                            )}
+                                                        </td>
                                                         <td className="py-3">{listing.energySource}</td>
                                                         <td className="py-3">{listing.tokenAmount}</td>
                                                         <td className="py-3">{listing.pricePerToken}</td>
@@ -512,7 +667,27 @@ export default function Home() {
 
                             {isProducer && producerInfo?.verified && (
                                 <section className="bg-white rounded-lg shadow-md p-6 mb-8">
-                                    <h2 className="text-xl font-bold mb-4">Your Certificates</h2>
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h2 className="text-xl font-bold">Your Certificates</h2>
+                                        <button
+                                            onClick={() => loadCertificates(account, certificationContract)}
+                                            className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 flex items-center">
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                className="h-4 w-4 mr-1"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor">
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                                                />
+                                            </svg>
+                                            Refresh
+                                        </button>
+                                    </div>
                                     {certificates.length === 0 ? (
                                         <p className="text-gray-500">You haven't created any certificates yet</p>
                                     ) : (
@@ -785,6 +960,11 @@ export default function Home() {
                                                                 {producer.address.substring(0, 6)}...
                                                                 {producer.address.substring(
                                                                     producer.address.length - 4
+                                                                )}
+                                                                {producer.accountLabel && (
+                                                                    <span className="ml-1 bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded">
+                                                                        {producer.accountLabel}
+                                                                    </span>
                                                                 )}
                                                             </td>
                                                             <td className="py-3">{producer.name}</td>

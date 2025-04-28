@@ -32,6 +32,7 @@ export default function Home() {
     const [producersToVerify, setProducersToVerify] = useState([])
     const [accounts, setAccounts] = useState([])
     const [checkingWallet, setCheckingWallet] = useState(true) // New state to track initial wallet check
+    const [unverifiedCertificates, setUnverifiedCertificates] = useState([])
 
     // Known account labels mapping
     const knownAccounts = {
@@ -214,6 +215,7 @@ export default function Home() {
         setProducerInfo(null)
         setIsAuditor(false)
         setProducersToVerify([])
+        setUnverifiedCertificates([])
 
         // Clear Web3Modal cached provider
         if (window.localStorage.getItem("WEB3_CONNECT_CACHED_PROVIDER")) {
@@ -309,9 +311,10 @@ export default function Home() {
             const isAuditor = await renewableEnergyCerticiationContract.authorizedAuditors(account)
             setIsAuditor(isAuditor)
 
-            // If user is an auditor, load unverified producers
+            // If user is an auditor, load unverified producers and certificates
             if (isAuditor) {
                 await loadUnverifiedProducers(renewableEnergyCerticiationContract)
+                await loadUnverifiedCertificates(energyMarketplaceContract)
             }
 
             // Load active listings
@@ -653,6 +656,79 @@ export default function Home() {
             console.log("============================")
         } catch (error) {
             console.error("Debug error:", error)
+        }
+    }
+
+    // Add function to load unverified certificates
+    const loadUnverifiedCertificates = async (marketplaceContract) => {
+        try {
+            if (!marketplaceContract) {
+                console.error("Cannot load unverified certificates - marketplace contract not initialized")
+                return
+            }
+
+            // Get certificate count from marketplace contract
+            console.log("Loading certificates from marketplace contract to find unverified ones")
+            const certificateCount = await marketplaceContract.certificateCount()
+            console.log("Total certificate count:", certificateCount.toString())
+            const certs = []
+
+            // Loop through all certificates
+            for (let i = 1; i <= Number(certificateCount); i++) {
+                try {
+                    const cert = await marketplaceContract.certificates(i)
+
+                    // Only show unverified certificates
+                    if (!cert.verified) {
+                        certs.push({
+                            id: cert.id.toString(),
+                            producer: cert.producer,
+                            producerLabel: knownAccounts[cert.producer] || null,
+                            energySource: cert.energySource,
+                            kWhProduced: cert.kWhProduced.toString(),
+                            location: cert.location,
+                            timestamp: new Date(Number(cert.timestamp) * 1000).toLocaleString(),
+                        })
+                        console.log("Added unverified certificate to display list:", cert.id.toString())
+                    }
+                } catch (certError) {
+                    console.error(`Error loading certificate ${i}:`, certError)
+                    // Continue to next certificate
+                }
+            }
+
+            console.log("Loaded unverified certificates for display:", certs.length)
+            setUnverifiedCertificates(certs)
+        } catch (error) {
+            console.error("Error loading unverified certificates:", error)
+        }
+    }
+
+    // Add function to verify a certificate
+    const verifyCertificate = async (certificateId) => {
+        try {
+            // Call the marketplace contract to verify the certificate
+            // Since we're minting tokens, we need to provide the token amount
+            const tokenAmount = ethers.parseEther("1") // Mint 1 REC token per certificate
+
+            const tx = await energyMarketplaceContract.verifyCertificate(certificateId, tokenAmount)
+
+            console.log("Transaction sent, waiting for confirmation...")
+            const receipt = await tx.wait()
+            console.log("Certificate verified at tx hash:", receipt.hash)
+
+            // Reload unverified certificates
+            await loadUnverifiedCertificates(energyMarketplaceContract)
+
+            // Reload user data to update token balance
+            await loadUserData(
+                account,
+                energyTokenContract,
+                energyMarketplaceContract,
+                renewableEnergyCerticiationContract
+            )
+        } catch (error) {
+            console.error("Error verifying certificate:", error)
         }
     }
 
@@ -1122,6 +1198,79 @@ export default function Home() {
                                                             <td className="py-3">
                                                                 <button
                                                                     onClick={() => verifyProducer(producer.address)}
+                                                                    className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">
+                                                                    Verify
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </section>
+                            )}
+
+                            {isAuditor && (
+                                <section className="bg-white rounded-lg shadow-md p-6 mb-8">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h2 className="text-xl font-bold">Certificate Verification</h2>
+                                        <button
+                                            onClick={() => loadUnverifiedCertificates(energyMarketplaceContract)}
+                                            className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 flex items-center">
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                className="h-4 w-4 mr-1"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor">
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                                                />
+                                            </svg>
+                                            Refresh
+                                        </button>
+                                    </div>
+
+                                    {unverifiedCertificates.length === 0 ? (
+                                        <p className="text-gray-500">No certificates waiting for verification</p>
+                                    ) : (
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full">
+                                                <thead>
+                                                    <tr className="border-b">
+                                                        <th className="text-left py-2">ID</th>
+                                                        <th className="text-left py-2">Producer</th>
+                                                        <th className="text-left py-2">Energy Source</th>
+                                                        <th className="text-left py-2">kWh Produced</th>
+                                                        <th className="text-left py-2">Location</th>
+                                                        <th className="text-left py-2">Timestamp</th>
+                                                        <th className="text-left py-2">Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {unverifiedCertificates.map((cert) => (
+                                                        <tr key={cert.id} className="border-b hover:bg-gray-50">
+                                                            <td className="py-3">{cert.id}</td>
+                                                            <td className="py-3">
+                                                                {cert.producer.substring(0, 6)}...
+                                                                {cert.producer.substring(cert.producer.length - 4)}
+                                                                {cert.producerLabel && (
+                                                                    <span className="ml-1 bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded">
+                                                                        {cert.producerLabel}
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                            <td className="py-3">{cert.energySource}</td>
+                                                            <td className="py-3">{cert.kWhProduced}</td>
+                                                            <td className="py-3">{cert.location}</td>
+                                                            <td className="py-3">{cert.timestamp}</td>
+                                                            <td className="py-3">
+                                                                <button
+                                                                    onClick={() => verifyCertificate(cert.id)}
                                                                     className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">
                                                                     Verify
                                                                 </button>

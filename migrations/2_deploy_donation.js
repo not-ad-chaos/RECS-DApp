@@ -69,58 +69,58 @@ module.exports = async function (deployer, network, accounts) {
         // Create initial token balances via proper flow
         console.log("Creating tokens through the full registration-certification-verification flow...")
 
-        for (let i = 0; i < accountsToMint.length; i++) {
-            const account = accountsToMint[i]
-            // First register and verify each producer
-            const energySource = energySources[i % energySources.length]
-            const location = locations[i % locations.length]
+        // for (let i = 0; i < accountsToMint.length; i++) {
+        //     const account = accountsToMint[i]
+        //     // First register and verify each producer
+        //     const energySource = energySources[i % energySources.length]
+        //     const location = locations[i % locations.length]
 
-            try {
-                console.log(`Processing account ${i}: ${account} (${energySource})`)
+        //     try {
+        //         console.log(`Processing account ${i}: ${account} (${energySource})`)
 
-                // Register producer
-                await renewableCertification.registerProducer(
-                    `Producer${i + 1}`,
-                    location,
-                    [energySource],
-                    1000 + i * 500,
-                    { from: account }
-                )
+        //         // Register producer
+        //         await renewableCertification.registerProducer(
+        //             `Producer${i + 1}`,
+        //             location,
+        //             [energySource],
+        //             1000 + i * 500,
+        //             { from: account }
+        //         )
 
-                // Verify producer
-                await renewableCertification.verifyProducer(account, { from: accounts[0] })
-                console.log(`Registered and verified producer ${i} (${energySource})`)
+        //         // Verify producer
+        //         await renewableCertification.verifyProducer(account, { from: accounts[0] })
+        //         console.log(`Registered and verified producer ${i} (${energySource})`)
 
-                // Create certificates and mint tokens
-                const certificateAmount = 50 // 50 tokens for each account
-                console.log(`Creating verified certificate with ${certificateAmount} tokens for account ${account}`)
+        //         // Create certificates and mint tokens
+        //         const certificateAmount = 50 // 50 tokens for each account
+        //         console.log(`Creating verified certificate with ${certificateAmount} tokens for account ${account}`)
 
-                // 1. Create certificate
-                await energyMarketplace.createCertificate(
-                    account,
-                    energySource,
-                    certificateAmount * 100, // 100 kWh per token
-                    location
-                )
+        //         // 1. Create certificate
+        //         await energyMarketplace.createCertificate(
+        //             account,
+        //             energySource,
+        //             certificateAmount * 100, // 100 kWh per token
+        //             location
+        //         )
 
-                // 2. Get certificate ID
-                const certId = await energyMarketplace.certificateCount()
-                console.log(`Certificate created with ID: ${certId}`)
+        //         // 2. Get certificate ID
+        //         const certId = await energyMarketplace.certificateCount()
+        //         console.log(`Certificate created with ID: ${certId}`)
 
-                // 3. Verify certificate and mint tokens
-                await energyMarketplace.verifyCertificate(certId, ethers.utils.parseEther(certificateAmount.toString()))
+        //         // 3. Verify certificate and mint tokens
+        //         await energyMarketplace.verifyCertificate(certId, ethers.utils.parseEther(certificateAmount.toString()))
 
-                console.log(
-                    `Certificate ${certId} verified and ${certificateAmount} tokens minted to account ${account}`
-                )
+        //         console.log(
+        //             `Certificate ${certId} verified and ${certificateAmount} tokens minted to account ${account}`
+        //         )
 
-                // Verify balance was correctly minted
-                const balance = await energyToken.balanceOf(account)
-                console.log(`Account ${account} balance after minting: ${ethers.utils.formatEther(balance)} REC`)
-            } catch (error) {
-                console.error(`Error processing account ${account}:`, error.message)
-            }
-        }
+        //         // Verify balance was correctly minted
+        //         const balance = await energyToken.balanceOf(account)
+        //         console.log(`Account ${account} balance after minting: ${ethers.utils.formatEther(balance)} REC`)
+        //     } catch (error) {
+        //         console.error(`Error processing account ${account}:`, error.message)
+        //     }
+        // }
 
         // Write contract addresses to file
         const contracts = {

@@ -22064,10 +22064,118 @@
       "links": {},
       "address": "0xDab2041bCD1434459506Bba651938aaf7322c5F0",
       "transactionHash": "0x13bd20d236e0526a10620bffe4a0e85b3faaff8561d19731a072d8f6c108c02e"
+    },
+    "1745827306653": {
+      "events": {
+        "0xfc63a025c64dc65123c35b0d4a16bc51610a09de1acb9a0bed6393a9fec5038d": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "reportId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "producer",
+              "type": "address"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "auditor",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "bool",
+              "name": "passed",
+              "type": "bool"
+            }
+          ],
+          "name": "AuditReportFiled",
+          "type": "event"
+        },
+        "0x7bcf8161dba1805d02b64f93065085912ef8115e91fee268661f2262f1b2f135": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "auditor",
+              "type": "address"
+            }
+          ],
+          "name": "AuditorAuthorized",
+          "type": "event"
+        },
+        "0xeb2a2eb059f7ce22cdb9ce6710a0df23c2e8d5ca169ee77629faa99f8c788a01": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "auditor",
+              "type": "address"
+            }
+          ],
+          "name": "AuditorRevoked",
+          "type": "event"
+        },
+        "0x8e352259c32bcb7226d89eb7747d2bee6c6483666cb0045b6a74841a95c3497e": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "producerAddress",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "string",
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "capacityKW",
+              "type": "uint256"
+            }
+          ],
+          "name": "ProducerRegistered",
+          "type": "event"
+        },
+        "0x29c5fb292d73374add83bddc6d2b9b9161c7212031cc75fc47eb8c31bda10d9c": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "producerAddress",
+              "type": "address"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "auditor",
+              "type": "address"
+            }
+          ],
+          "name": "ProducerVerified",
+          "type": "event"
+        }
+      },
+      "links": {},
+      "address": "0xDab2041bCD1434459506Bba651938aaf7322c5F0",
+      "transactionHash": "0x13bd20d236e0526a10620bffe4a0e85b3faaff8561d19731a072d8f6c108c02e"
     }
   },
   "schemaVersion": "3.4.16",
-  "updatedAt": "2025-04-28T07:52:07.486Z",
+  "updatedAt": "2025-04-28T08:01:52.522Z",
   "networkType": "ethereum",
   "devdoc": {
     "kind": "dev",

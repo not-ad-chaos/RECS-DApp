@@ -19,9 +19,9 @@ const RENEWABLE_CERTIFICATION_ADDRESS = contracts.RenewableEnergyCertification
 export default function Home() {
     // State variables
     const [account, setAccount] = useState("")
-    const [tokenContract, setTokenContract] = useState(null)
-    const [marketplaceContract, setMarketplaceContract] = useState(null)
-    const [certificationContract, setCertificationContract] = useState(null)
+    const [energyTokenContract, setEnergyTokenContract] = useState(null)
+    const [energyMarketplaceContract, setEnergyMarketplaceContract] = useState(null)
+    const [renewableEnergyCerticiationContract, setRenewableEnergyCertificateContract] = useState(null)
     const [connected, setConnected] = useState(false)
     const [balance, setBalance] = useState("0")
     const [activeListings, setActiveListings] = useState([])
@@ -133,26 +133,26 @@ export default function Home() {
             setConnected(true)
 
             // Initialize contracts with signer
-            const tokenContract = new ethers.Contract(ENERGY_TOKEN_ADDRESS, EnergyTokenABI.abi, signer)
+            const energyTokenContract = new ethers.Contract(ENERGY_TOKEN_ADDRESS, EnergyTokenABI.abi, signer)
 
-            const marketplaceContract = new ethers.Contract(
+            const energyMarketplaceContract = new ethers.Contract(
                 ENERGY_MARKETPLACE_ADDRESS,
                 EnergyMarketplaceABI.abi,
                 signer
             )
 
-            const certificationContract = new ethers.Contract(
+            const renewableEnergyCerticiationContract = new ethers.Contract(
                 RENEWABLE_CERTIFICATION_ADDRESS,
                 RenewableEnergyCertificationABI.abi,
                 signer
             )
 
-            setTokenContract(tokenContract)
-            setMarketplaceContract(marketplaceContract)
-            setCertificationContract(certificationContract)
+            setEnergyTokenContract(energyTokenContract)
+            setEnergyMarketplaceContract(energyMarketplaceContract)
+            setRenewableEnergyCertificateContract(renewableEnergyCerticiationContract)
 
             // Now load user data after contracts are initialized
-            await loadUserData(allAccounts[0].address, tokenContract, marketplaceContract, certificationContract)
+            await loadUserData(allAccounts[0].address, energyTokenContract, energyMarketplaceContract, renewableEnergyCerticiationContract)
 
             return true
         } catch (error) {
@@ -166,9 +166,9 @@ export default function Home() {
         setConnected(false)
         setAccount("")
         setAccounts([])
-        setTokenContract(null)
-        setMarketplaceContract(null)
-        setCertificationContract(null)
+        setEnergyTokenContract(null)
+        setEnergyMarketplaceContract(null)
+        setRenewableEnergyCertificateContract(null)
         setBalance("0")
         setActiveListings([])
         setCertificates([])
@@ -204,44 +204,44 @@ export default function Home() {
             const signer = await ethProvider.getSigner(newAddress)
 
             // Reinitialize contracts with new signer
-            const tokenContract = new ethers.Contract(ENERGY_TOKEN_ADDRESS, EnergyTokenABI.abi, signer)
+            const energyTokenContract = new ethers.Contract(ENERGY_TOKEN_ADDRESS, EnergyTokenABI.abi, signer)
 
-            const marketplaceContract = new ethers.Contract(
+            const energyMarketplaceContract = new ethers.Contract(
                 ENERGY_MARKETPLACE_ADDRESS,
                 EnergyMarketplaceABI.abi,
                 signer
             )
 
-            const certificationContract = new ethers.Contract(
+            const renewableEnergyCerticiationContract = new ethers.Contract(
                 RENEWABLE_CERTIFICATION_ADDRESS,
                 RenewableEnergyCertificationABI.abi,
                 signer
             )
 
-            setTokenContract(tokenContract)
-            setMarketplaceContract(marketplaceContract)
-            setCertificationContract(certificationContract)
+            setEnergyTokenContract(energyTokenContract)
+            setEnergyMarketplaceContract(energyMarketplaceContract)
+            setRenewableEnergyCertificateContract(renewableEnergyCerticiationContract)
 
             // Reload user data for new account
-            await loadUserData(newAddress, tokenContract, marketplaceContract, certificationContract)
+            await loadUserData(newAddress, energyTokenContract, energyMarketplaceContract, renewableEnergyCerticiationContract)
         } catch (error) {
             console.error("Error switching account:", error)
         }
     }
 
     // Load user data
-    const loadUserData = async (account, tokenContract, marketplaceContract, certificationContract) => {
+    const loadUserData = async (account, energyTokenContract, energyMarketplaceContract, renewableEnergyCerticiationContract) => {
         try {
             // Get token balance
-            const balance = await tokenContract.balanceOf(account)
+            const balance = await energyTokenContract.balanceOf(account)
             setBalance(ethers.formatEther(balance))
 
             // Check if user is registered producer
-            const isRegistered = await certificationContract.registeredProducers(account)
+            const isRegistered = await renewableEnergyCerticiationContract.registeredProducers(account)
             setIsProducer(isRegistered)
 
             if (isRegistered) {
-                const producer = await certificationContract.producers(account)
+                const producer = await renewableEnergyCerticiationContract.producers(account)
                 setProducerInfo({
                     name: producer.name,
                     location: producer.location,
@@ -252,19 +252,19 @@ export default function Home() {
             }
 
             // Check if user is an auditor
-            const isAuditor = await certificationContract.authorizedAuditors(account)
+            const isAuditor = await renewableEnergyCerticiationContract.authorizedAuditors(account)
             setIsAuditor(isAuditor)
 
             // If user is an auditor, load unverified producers
             if (isAuditor) {
-                await loadUnverifiedProducers(certificationContract)
+                await loadUnverifiedProducers(renewableEnergyCerticiationContract)
             }
 
             // Load active listings
-            await loadActiveListings(marketplaceContract)
+            await loadActiveListings(energyMarketplaceContract)
 
             // Load certificates with certification contract
-            await loadCertificates(account, certificationContract)
+            await loadCertificates(account)
 
             console.log("User data loaded successfully for account:", account)
         } catch (error) {
@@ -273,21 +273,22 @@ export default function Home() {
     }
 
     // Load certificates - Updated to handle BigInt values
-    const loadCertificates = async (account, certificationContract) => {
+    const loadCertificates = async (account) => {
         try {
-            if (!certificationContract) {
+            if (!renewableEnergyCerticiationContract) {
                 console.error("Cannot load certificates - contract not initialized")
                 return
             }
 
             // Get certificate count from certification contract - as a property, not a function
-            const certificateCount = await certificationContract.certificateCount
+            console.log("lmao loading certificates:", renewableEnergyCerticiationContract)
+            const certificateCount = await renewableEnergyCerticiationContract.certificateCount()
             console.log("Certificate count:", certificateCount.toString())
             const certs = []
 
             for (let i = 1; i <= Number(certificateCount); i++) {
                 try {
-                    const cert = await certificationContract.certificates(i)
+                    const cert = await renewableEnergyCerticiationContract.certificates(i)
                     // Only add certificates for the current account
                     if (cert.producer.toLowerCase() === account.toLowerCase()) {
                         certs.push({
@@ -314,17 +315,17 @@ export default function Home() {
     }
 
     // Load active marketplace listings
-    const loadActiveListings = async (marketplaceContract) => {
+    const loadActiveListings = async (energyMarketplaceContract) => {
         try {
             // Get the count of all listings - as a property, not a function
-            const count = await marketplaceContract.listingCount
+            const count = await energyMarketplaceContract.listingCount()
             let listings = []
-            console.log("Active listing count:", count.toString())
+            console.log("Active listing count:", count)
 
             // Loop through all listings and add the active ones to our state
             for (let i = 1; i <= Number(count); i++) {
                 try {
-                    const listing = await marketplaceContract.listings(i)
+                    const listing = await energyMarketplaceContract.listings(i)
                     if (listing.active) {
                         listings.push({
                             id: listing.id.toString(),
@@ -359,11 +360,11 @@ export default function Home() {
             const pricePerToken = ethers.parseEther(newListing.pricePerToken)
 
             // First approve marketplace to spend tokens
-            const approveTx = await tokenContract.approve(ENERGY_MARKETPLACE_ADDRESS, tokenAmount)
+            const approveTx = await energyTokenContract.approve(ENERGY_MARKETPLACE_ADDRESS, tokenAmount)
             await approveTx.wait()
 
             // Create listing
-            const tx = await marketplaceContract.createListing(
+            const tx = await energyMarketplaceContract.createListing(
                 tokenAmount,
                 pricePerToken,
                 newListing.energySource,
@@ -380,7 +381,7 @@ export default function Home() {
                 kWhRepresented: "",
             })
 
-            loadActiveListings(marketplaceContract)
+            loadActiveListings(energyMarketplaceContract)
         } catch (error) {
             console.error("Error creating listing:", error)
         }
@@ -389,14 +390,14 @@ export default function Home() {
     // Buy listing
     const buyListing = async (listingId, totalPrice) => {
         try {
-            const tx = await marketplaceContract.buyListing(listingId, {
+            const tx = await energyMarketplaceContract.buyListing(listingId, {
                 value: ethers.parseEther(totalPrice),
             })
 
             await tx.wait()
 
             // Reload data
-            loadUserData(account, tokenContract, marketplaceContract, certificationContract)
+            loadUserData(account, energyTokenContract, energyMarketplaceContract, renewableEnergyCerticiationContract)
         } catch (error) {
             console.error("Error buying listing:", error)
         }
@@ -408,7 +409,7 @@ export default function Home() {
 
         try {
             // Submit the certificate to the blockchain
-            const tx = await certificationContract.submitEnergyCertificate(
+            const tx = await renewableEnergyCerticiationContract.submitEnergyCertificate(
                 newCertificate.energySource,
                 newCertificate.kWhProduced,
                 newCertificate.location
@@ -426,7 +427,7 @@ export default function Home() {
 
             // Load certificates after a short delay to ensure blockchain state is updated
             setTimeout(() => {
-                loadCertificates(account, certificationContract)
+                loadCertificates(account)
             }, 2000)
 
             return true
@@ -441,7 +442,7 @@ export default function Home() {
         e.preventDefault()
 
         try {
-            const tx = await certificationContract.registerProducer(
+            const tx = await renewableEnergyCerticiationContract.registerProducer(
                 producerRegistration.name,
                 producerRegistration.location,
                 producerRegistration.energyTypes,
@@ -451,7 +452,7 @@ export default function Home() {
             await tx.wait()
 
             // Reload data
-            loadUserData(account, tokenContract, marketplaceContract, certificationContract)
+            loadUserData(account, energyTokenContract, energyMarketplaceContract, renewableEnergyCerticiationContract)
         } catch (error) {
             console.error("Error registering producer:", error)
         }
@@ -508,7 +509,7 @@ export default function Home() {
     const verifyProducer = async (producerAddress) => {
         try {
             // Create audit report and verify producer
-            const tx = await certificationContract.fileAuditReport(
+            const tx = await renewableEnergyCerticiationContract.fileAuditReport(
                 producerAddress,
                 "ipfs://placeholder-uri", // You might want to add actual audit report URI
                 "Producer verified through UI",
@@ -518,11 +519,11 @@ export default function Home() {
             await tx.wait()
 
             // Reload unverified producers
-            await loadUnverifiedProducers(certificationContract)
+            await loadUnverifiedProducers(renewableEnergyCerticiationContract)
 
             // If this was the current user being verified, reload their data
             if (producerAddress.toLowerCase() === account.toLowerCase()) {
-                await loadUserData(account, tokenContract, marketplaceContract, certificationContract)
+                await loadUserData(account, energyTokenContract, energyMarketplaceContract, renewableEnergyCerticiationContract)
             }
         } catch (error) {
             console.error("Error verifying producer:", error)
@@ -670,7 +671,7 @@ export default function Home() {
                                     <div className="flex justify-between items-center mb-4">
                                         <h2 className="text-xl font-bold">Your Certificates</h2>
                                         <button
-                                            onClick={() => loadCertificates(account, certificationContract)}
+                                            onClick={() => loadCertificates(account)}
                                             className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 flex items-center">
                                             <svg
                                                 xmlns="http://www.w3.org/2000/svg"

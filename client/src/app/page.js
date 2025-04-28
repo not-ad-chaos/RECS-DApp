@@ -287,6 +287,7 @@ export default function Home() {
         try {
             // Get token balance
             const balance = await energyTokenContract.balanceOf(account)
+            console.log("lmao Loading token balance for account:", account, balance)
             setBalance(ethers.formatEther(balance))
 
             // Check if user is registered producer

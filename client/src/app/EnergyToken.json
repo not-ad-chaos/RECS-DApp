@@ -14998,10 +14998,117 @@
       "links": {},
       "address": "0xa417bb88629Bb0Ab57Bbb245b4414071902953AF",
       "transactionHash": "0x50bc60b2ea4e5b1eeec634891df2610524200d2a8f42e4edd4333a2766f5b75b"
+    },
+    "1745826644000": {
+      "events": {
+        "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "owner",
+              "type": "address"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "spender",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "value",
+              "type": "uint256"
+            }
+          ],
+          "name": "Approval",
+          "type": "event"
+        },
+        "0x8f13d0d1234102fe1db9a693e113ceae11c91c6aebc488ec3b7da92b5d962551": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "previousController",
+              "type": "address"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "newController",
+              "type": "address"
+            }
+          ],
+          "name": "MarketControllerChanged",
+          "type": "event"
+        },
+        "0x704496b72f6d3fd6e462fa31e27faddedde127bc9942bc94320e0c115b00cedf": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "to",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "value",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "string",
+              "name": "energySource",
+              "type": "string"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "kWhProduced",
+              "type": "uint256"
+            }
+          ],
+          "name": "Mint",
+          "type": "event"
+        },
+        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "from",
+              "type": "address"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "to",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "value",
+              "type": "uint256"
+            }
+          ],
+          "name": "Transfer",
+          "type": "event"
+        }
+      },
+      "links": {},
+      "address": "0xa417bb88629Bb0Ab57Bbb245b4414071902953AF",
+      "transactionHash": "0x50bc60b2ea4e5b1eeec634891df2610524200d2a8f42e4edd4333a2766f5b75b"
     }
   },
   "schemaVersion": "3.4.16",
-  "updatedAt": "2025-04-28T07:48:24.270Z",
+  "updatedAt": "2025-04-28T07:52:07.471Z",
   "networkType": "ethereum",
   "devdoc": {
     "kind": "dev",

@@ -28459,10 +28459,154 @@
       "links": {},
       "address": "0x51fFECC16e2755a3568cCc7928C1CFC6fbEd710c",
       "transactionHash": "0xb04cde02e792171b4521ea46d3ef2722ae20a00b4b6ef586c78680ed37a300e3"
+    },
+    "1745826644000": {
+      "events": {
+        "0xcc68fee6ac9c3d08b8ad0fe1b8571648b4dbc9ef132835296f96d1027460087c": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "id",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "producer",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "string",
+              "name": "energySource",
+              "type": "string"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "kWhProduced",
+              "type": "uint256"
+            }
+          ],
+          "name": "CertificateCreated",
+          "type": "event"
+        },
+        "0xd7c96d6fc66839b1626cff5f8eccbacfa07b17981e577e09f16310f5fca240a8": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "id",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "verifier",
+              "type": "address"
+            }
+          ],
+          "name": "CertificateVerified",
+          "type": "event"
+        },
+        "0x8e25282255ab31897df2b0456bb993ac7f84d376861aefd84901d2d63a7428a2": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "id",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "seller",
+              "type": "address"
+            }
+          ],
+          "name": "ListingCancelled",
+          "type": "event"
+        },
+        "0x12dc294b81a709d694b1337a350a12a00076c19a77a25aab67a5f0c07e0f164d": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "id",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "seller",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "tokenAmount",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "pricePerToken",
+              "type": "uint256"
+            }
+          ],
+          "name": "ListingCreated",
+          "type": "event"
+        },
+        "0x67806fb1f9a1d5258c8ae3101868dc1bbd114cb2c1829b37dbdd88d64cf17d82": {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "id",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "buyer",
+              "type": "address"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "seller",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "tokenAmount",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "totalPrice",
+              "type": "uint256"
+            }
+          ],
+          "name": "ListingPurchased",
+          "type": "event"
+        }
+      },
+      "links": {},
+      "address": "0x51fFECC16e2755a3568cCc7928C1CFC6fbEd710c",
+      "transactionHash": "0xb04cde02e792171b4521ea46d3ef2722ae20a00b4b6ef586c78680ed37a300e3"
     }
   },
   "schemaVersion": "3.4.16",
-  "updatedAt": "2025-04-28T07:48:24.276Z",
+  "updatedAt": "2025-04-28T07:52:07.478Z",
   "networkType": "ethereum",
   "devdoc": {
     "kind": "dev",

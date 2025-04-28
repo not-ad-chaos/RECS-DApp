@@ -53,7 +53,11 @@ module.exports = async function (deployer, network, accounts) {
         await renewableCertification.authorizeAuditor(accounts[1])
         console.log("First auditor added:", accounts[1])
 
-        // List of accounts to mint tokens for
+        // Create arrays for energy sources and locations
+        const energySources = ["Solar", "Wind", "Hydro", "Biomass", "Geothermal"]
+        const locations = ["California", "Texas", "New York", "Florida", "Washington"]
+
+        // Target accounts to receive tokens
         const accountsToMint = [
             "0x401EE82A841dc6B56DAe765bBBF3456Ea79F3B56",
             "0x7cc3C7E69e1aa0C941E8E34C9c4c9b52B1AfF017",
@@ -62,22 +66,59 @@ module.exports = async function (deployer, network, accounts) {
             "0xd69aA3AFc727e578B3648E9b27a549c03D251CC6",
         ]
 
-        // Mint tokens directly to each account
-        console.log("Minting 50 REC tokens for test accounts...")
-        for (const account of accountsToMint) {
-            console.log(`Minting tokens for account: ${account}`)
+        // Create initial token balances via proper flow
+        console.log("Creating tokens through the full registration-certification-verification flow...")
+
+        for (let i = 0; i < accountsToMint.length; i++) {
+            const account = accountsToMint[i]
+            // First register and verify each producer
+            const energySource = energySources[i % energySources.length]
+            const location = locations[i % locations.length]
+
             try {
-                // Mint 50 tokens directly to the account - using Solar as default energy source
-                const tokenAmount = ethers.utils.parseEther("50") // 50 REC tokens
-                const mintTx = await energyToken.mint(
-                    account, // recipient address
-                    tokenAmount, // 50 tokens
-                    0, // Energy source enum (0 = Solar)
-                    "1000" // kWh produced (just a placeholder value)
+                console.log(`Processing account ${i}: ${account} (${energySource})`)
+
+                // Register producer
+                await renewableCertification.registerProducer(
+                    `Producer${i + 1}`,
+                    location,
+                    [energySource],
+                    1000 + i * 500,
+                    { from: account }
                 )
-                console.log(`Successfully minted 50 REC tokens for ${account}, tx: ${mintTx.tx}`)
+
+                // Verify producer
+                await renewableCertification.verifyProducer(account, { from: accounts[0] })
+                console.log(`Registered and verified producer ${i} (${energySource})`)
+
+                // Create certificates and mint tokens
+                const certificateAmount = 50 // 50 tokens for each account
+                console.log(`Creating verified certificate with ${certificateAmount} tokens for account ${account}`)
+
+                // 1. Create certificate
+                await energyMarketplace.createCertificate(
+                    account,
+                    energySource,
+                    certificateAmount * 100, // 100 kWh per token
+                    location
+                )
+
+                // 2. Get certificate ID
+                const certId = await energyMarketplace.certificateCount()
+                console.log(`Certificate created with ID: ${certId}`)
+
+                // 3. Verify certificate and mint tokens
+                await energyMarketplace.verifyCertificate(certId, ethers.utils.parseEther(certificateAmount.toString()))
+
+                console.log(
+                    `Certificate ${certId} verified and ${certificateAmount} tokens minted to account ${account}`
+                )
+
+                // Verify balance was correctly minted
+                const balance = await energyToken.balanceOf(account)
+                console.log(`Account ${account} balance after minting: ${ethers.utils.formatEther(balance)} REC`)
             } catch (error) {
-                console.error(`Error minting tokens for account ${account}:`, error.message)
+                console.error(`Error processing account ${account}:`, error.message)
             }
         }
 
